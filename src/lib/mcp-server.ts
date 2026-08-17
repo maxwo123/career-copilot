@@ -22,12 +22,27 @@ const DOC_TYPES = ["resume", "cover_letter", "interview_prep", "match_analysis",
 const ACTION_CATEGORIES = ["skill", "knowledge", "apply", "document", "other"];
 const ACTION_STATUSES = ["open", "done", "dismissed"];
 
-const SERVER_INSTRUCTIONS = `You are the intelligence layer for this career-growth app; the app itself has no AI. Recommended session flow:
-1. Call get_career_narrative FIRST — it is the holistic picture (where the candidate started, where they are, where they're headed) plus pending work: it flags an empty narrative, stale industry briefings, and open action items.
-2. For guidance/direction conversations, interview the candidate with guiding questions, then persist what you learned via update_career_narrative (including coach_notes for future sessions — possibly run by a different AI tool).
-3. Keep the dashboard actionable: upsert_action_item for concrete next steps (learn X, read Y, apply to Z). Mark items done as the candidate reports progress.
-4. Industry briefings: research current news for the candidate's target industry and save_document with doc_type "briefing". Match vocabulary to the comprehension level recorded in the narrative's current_state — define jargon on first use for beginners, raise the level as they grow.
-5. Resume/cover-letter/tailoring work: get_profile + get_job + save_document. Tailoring means selecting and rephrasing real profile entries, never inventing facts.`;
+const SERVER_INSTRUCTIONS = `You are the intelligence layer for this career-growth app; the app itself has no AI. The app keeps a hidden "career narrative" — behind-the-scenes coach memory about the candidate (where they started, where they are now, where they're headed, interests, constraints, gaps, coach notes). It is NOT visible anywhere in the app's UI: connected AI tools like you are its only readers and writers, and it is how coaching context survives across sessions and across different AI tools.
+
+Session protocol:
+1. LOAD CONTEXT FIRST: call get_career_narrative before answering any career question. It returns the coach memory plus pending work (open action items, briefing staleness).
+2. FIRST TIME (it returns first_time: true): the candidate has no coach memory yet. Proactively suggest a short guided interview — the response includes the question guide. Ask ONE question at a time, conversationally; after the interview, save the picture with update_career_narrative and propose 3–5 starter action items via upsert_action_item. Tell the candidate this builds a private career memory that makes every future conversation (in any AI tool) smarter.
+3. RETURNING: the memory should progress over time. Whenever a conversation reveals something new — a skill gained, a goal sharpened, a worry, a win — merge it in via update_career_narrative. Refine the existing text (you loaded it in step 1); never wholesale overwrite. Leave coach_notes for the next session.
+4. TRANSPARENCY: if the candidate asks what you know about them, share the narrative content openly — it is their data, just stored out of the UI's way.
+5. Keep the dashboard actionable (upsert_action_item — keep ≤5 open items, prune stale ones), briefings current (save_document doc_type "briefing", vocabulary matched to the level recorded in current_state), and resumes truthful (tailoring selects and rephrases real profile entries, never invents).`;
+
+const INTERVIEW_GUIDE = {
+  style:
+    "One question at a time, conversational, ~5 minutes total. Follow up naturally; skip questions they've already answered. Afterwards: save with update_career_narrative, then propose 3–5 starter action items.",
+  questions: [
+    { field: "starting_point", ask: "What first got you interested in your field? Where did this all start?" },
+    { field: "current_state", ask: "Where are you right now — school year / role, and what skills or experience have you picked up so far?" },
+    { field: "goals", ask: "If things go well, where do you want to be in 3–5 years? Any target roles, companies, or industries?" },
+    { field: "interests", ask: "What topics or problems genuinely pull you in — the things you'd read about even if nobody assigned them?" },
+    { field: "constraints_text", ask: "Any real-world constraints I should plan around — time, location, finances, grades, visa?" },
+    { field: "gap_analysis", ask: "What feels like the biggest obstacle between where you are and where you want to go?" },
+  ],
+};
 
 interface ToolDef {
   name: string;
@@ -39,13 +54,13 @@ const TOOLS: ToolDef[] = [
   {
     name: "get_career_narrative",
     description:
-      "START HERE for any guidance conversation. The candidate's career narrative — where they began, where they are now, where they're headed, interests, constraints, gap analysis, and coach notes left by previous AI sessions (possibly other AI tools). Also reports pending work: whether the narrative needs filling in, how stale the latest industry briefing is, and how many action items are open.",
+      "ALWAYS CALL THIS FIRST, before answering any career question. Loads the behind-the-scenes coach memory (not visible in the app UI): where the candidate began, where they are now, where they're headed, interests, constraints, gap analysis, and coach notes from previous AI sessions — possibly from other AI tools. Also reports pending work (open action items, briefing staleness). If it returns first_time: true, suggest the included guided interview to build the memory.",
     inputSchema: { type: "object", properties: {} },
   },
   {
     name: "update_career_narrative",
     description:
-      "Persist what a guidance conversation established. Only provided fields change. Write in clear prose the candidate would recognize as their own story; use coach_notes for observations future AI sessions should know (level, momentum, recurring worries). Update current_state as skills and industry comprehension grow — briefing vocabulary is calibrated from it.",
+      "Persist coach memory. Only provided fields change. MERGE, don't overwrite: you loaded the current text via get_career_narrative — refine it with what this conversation revealed, so the picture progresses over time. Write in clear prose the candidate would recognize as their own story; use coach_notes for observations future AI sessions should know (level, momentum, recurring worries). Keep current_state honest about industry-comprehension level — briefing vocabulary is calibrated from it.",
     inputSchema: {
       type: "object",
       properties: {
@@ -314,6 +329,7 @@ async function callTool(name: string, args: any): Promise<unknown> {
       const empty =
         !n || !["starting_point", "current_state", "goals"].some((f) => n[f]?.trim());
       return {
+        first_time: empty,
         narrative: n
           ? {
               starting_point: n.starting_point,
@@ -327,16 +343,21 @@ async function callTool(name: string, args: any): Promise<unknown> {
             }
           : null,
         pending_work: {
-          narrative_needs_interview: empty,
           open_action_items: openActions ?? 0,
           latest_briefing: briefing
             ? { title: briefing.title, age_days: briefingAgeDays, stale: (briefingAgeDays ?? 0) > 7 }
             : { note: "No industry briefing yet — consider researching and saving one (doc_type 'briefing')." },
         },
-        ...(empty && {
-          suggestion:
-            "The narrative is empty or thin. Offer to interview the candidate with guiding questions (background → current skills → goals → constraints), then save the picture via update_career_narrative.",
-        }),
+        ...(empty
+          ? {
+              next_step:
+                "No coach memory exists yet — this looks like the candidate's first session. Suggest a short guided interview to build their private career memory (it makes every future conversation, in any AI tool, smarter). Then save via update_career_narrative and propose 3–5 starter action items.",
+              interview_guide: INTERVIEW_GUIDE,
+            }
+          : {
+              next_step:
+                "Use this memory as context. If this conversation reveals anything new about the candidate, merge it back via update_career_narrative before the session ends.",
+            }),
       };
     }
 
@@ -442,14 +463,22 @@ async function callTool(name: string, args: any): Promise<unknown> {
     }
 
     case "get_profile": {
-      const [{ data: profileRow }, { data: entryRows }] = await Promise.all([
-        supabase.from("profile").select("*").maybeSingle(),
-        supabase
-          .from("profile_entries")
-          .select("*")
-          .order("sort_order", { ascending: true })
-          .order("created_at", { ascending: true }),
-      ]);
+      const [{ data: profileRow }, { data: entryRows }, { data: narrativeRow }] =
+        await Promise.all([
+          supabase.from("profile").select("*").maybeSingle(),
+          supabase
+            .from("profile_entries")
+            .select("*")
+            .order("sort_order", { ascending: true })
+            .order("created_at", { ascending: true }),
+          supabase
+            .from("career_narrative")
+            .select("starting_point, current_state, goals")
+            .maybeSingle(),
+        ]);
+      const narrativeEmpty =
+        !narrativeRow ||
+        !Object.values(narrativeRow).some((v) => (v as string)?.trim());
       const p = profileRow as Profile | null;
       const entries = (entryRows ?? []) as ProfileEntry[];
       const bySection: Record<string, unknown[]> = {};
@@ -477,6 +506,10 @@ async function callTool(name: string, args: any): Promise<unknown> {
             }
           : { note: "Profile header is empty — the candidate should fill in /profile (or use update_profile)." },
         sections: bySection,
+        ...(narrativeEmpty && {
+          coach_context_note:
+            "The behind-the-scenes coach memory is empty — call get_career_narrative for the first-time interview flow before giving career guidance.",
+        }),
       };
     }
 

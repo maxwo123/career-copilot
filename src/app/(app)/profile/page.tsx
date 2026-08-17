@@ -1,12 +1,11 @@
 import {
   addProfileEntry,
   deleteProfileEntry,
-  saveCareerNarrative,
   saveProfileHeader,
   updateProfileEntry,
 } from "@/app/actions";
 import { createClient } from "@/lib/supabase/server";
-import type { CareerNarrative, Profile, ProfileEntry, Section } from "@/lib/types";
+import type { Profile, ProfileEntry, Section } from "@/lib/types";
 import { SECTIONS, SECTION_LABELS } from "@/lib/types";
 import {
   Button,
@@ -66,19 +65,16 @@ function EntryFields({ entry }: { entry?: ProfileEntry }) {
 
 export default async function ProfilePage() {
   const supabase = await createClient();
-  const [{ data: profileRow }, { data: entryRows }, { data: narrativeRow }] =
-    await Promise.all([
-      supabase.from("profile").select("*").maybeSingle(),
-      supabase
-        .from("profile_entries")
-        .select("*")
-        .order("sort_order", { ascending: true })
-        .order("created_at", { ascending: true }),
-      supabase.from("career_narrative").select("*").maybeSingle(),
-    ]);
+  const [{ data: profileRow }, { data: entryRows }] = await Promise.all([
+    supabase.from("profile").select("*").maybeSingle(),
+    supabase
+      .from("profile_entries")
+      .select("*")
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true }),
+  ]);
   const profile = profileRow as Profile | null;
   const entries = (entryRows ?? []) as ProfileEntry[];
-  const narrative = narrativeRow as CareerNarrative | null;
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">
@@ -86,82 +82,6 @@ export default async function ProfilePage() {
         title="Master profile"
         description="This is the source of truth Claude tailors every resume from. Be generous — include everything; tailoring means cutting, not inventing."
       />
-
-      {/* Career narrative — the holistic picture AI coaches read first */}
-      <Card className="p-5">
-        <SectionTitle>Career narrative</SectionTitle>
-        <p className="mt-2 text-sm leading-relaxed text-stone-500">
-          The holistic picture every connected AI reads before giving guidance
-          — where you started, where you are, where you&apos;re going. Fill it
-          in by hand, or better: ask your AI to{" "}
-          <code className="rounded-md bg-stone-100 px-1.5 py-0.5 font-mono text-xs">
-            interview me and fill in my career narrative in Career Copilot
-          </code>
-        </p>
-        <form action={saveCareerNarrative} className="mt-4 space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Where I started">
-              <Textarea
-                name="starting_point"
-                rows={3}
-                defaultValue={narrative?.starting_point}
-                placeholder="Background, first exposures to the field..."
-              />
-            </Field>
-            <Field label="Where I am now">
-              <Textarea
-                name="current_state"
-                rows={3}
-                defaultValue={narrative?.current_state}
-                placeholder="Skills, experience, industry-knowledge level..."
-              />
-            </Field>
-            <Field label="Where I'm headed">
-              <Textarea
-                name="goals"
-                rows={3}
-                defaultValue={narrative?.goals}
-                placeholder="Target roles, industry, timeframe..."
-              />
-            </Field>
-            <Field label="Interests">
-              <Textarea
-                name="interests"
-                rows={3}
-                defaultValue={narrative?.interests}
-                placeholder="Topics, problems, environments that pull you..."
-              />
-            </Field>
-            <Field label="Constraints">
-              <Textarea
-                name="constraints_text"
-                rows={3}
-                defaultValue={narrative?.constraints_text}
-                placeholder="Time, location, finances, GPA..."
-              />
-            </Field>
-            <Field label="Gap analysis">
-              <Textarea
-                name="gap_analysis"
-                rows={3}
-                defaultValue={narrative?.gap_analysis}
-                placeholder="What stands between now and the goal..."
-              />
-            </Field>
-          </div>
-          {narrative?.coach_notes && (
-            <div className="rounded-lg border border-indigo-100 bg-indigo-50/50 p-3">
-              <div className="text-xs font-semibold tracking-wider text-indigo-400 uppercase">
-                Coach notes (AI-maintained)
-              </div>
-              <p className="mt-1 text-sm leading-relaxed whitespace-pre-wrap text-stone-600">
-                {narrative.coach_notes}
-              </p>
-            </div>
-          )}
-          <Button>Save narrative</Button>
-        </form>
-      </Card>
 
       {/* Header / contact */}
       <Card className="p-5">

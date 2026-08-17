@@ -30,15 +30,17 @@ where you view and print them.
    events via MCP (`upsert_timeline_event`). One click promotes a timeline
    event into a tracked job.
 7. **Career coach** — three pillars beyond documents: a **career narrative**
-   (on `/profile`; the holistic where-I-started / where-I-am / where-I'm-going
-   record every connected AI reads FIRST and refines after guidance
-   conversations — the app is the shared memory between AI tools), **action
-   items** on the dashboard (learn X, read Y, apply to Z — AI-assigned via
-   MCP, checked off by the user), and **industry briefings** (doc type
-   `briefing`: AI-curated news written at the comprehension level recorded
-   in the narrative). The MCP server's `initialize` instructions teach any
-   connected agent this workflow, including checking for pending work
-   (stale briefing, empty narrative) at session start.
+   (hidden, MCP-only coach memory — no UI; connected AIs load it via
+   `get_career_narrative` before any career question, run a first-time
+   guided interview when it's empty, and merge refinements back after every
+   meaningful conversation, so the picture progresses over time and carries
+   across AI tools), **action items** on the dashboard (learn X, read Y,
+   apply to Z — AI-assigned via MCP, checked off by the user), and
+   **industry briefings** (doc type `briefing`: AI-curated news written at
+   the comprehension level recorded in the narrative). The MCP `initialize`
+   instructions + tool descriptions + a cross-nudge in `get_profile` teach
+   any connected agent this protocol; if the user asks what the AI knows
+   about them, it shares the narrative openly.
 
 ## Stack
 
