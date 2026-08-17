@@ -168,6 +168,46 @@ export async function deleteProfileEntry(entryId: string) {
   revalidatePath("/profile");
 }
 
+// ------------------------------------------------------ skills (chips) ----
+
+export async function addSkillCategory(name: string): Promise<{ id?: string; error?: string }> {
+  const title = name.trim();
+  if (!title) return { error: "Category name is required." };
+
+  const supabase = await createClient();
+  const { data: existing } = await supabase
+    .from("profile_entries")
+    .select("id, sort_order")
+    .eq("section", "skills");
+  const nextSort =
+    (existing ?? []).reduce((m, e) => Math.max(m, e.sort_order ?? 0), -1) + 1;
+
+  const { data, error } = await supabase
+    .from("profile_entries")
+    .insert({ section: "skills", title, description: "", sort_order: nextSort })
+    .select("id")
+    .single();
+  if (error) return { error: error.message };
+  revalidatePath("/profile");
+  return { id: data.id };
+}
+
+export async function setSkillList(
+  entryId: string,
+  skills: string[]
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const description = skills.map((s) => s.trim()).filter(Boolean).join(", ");
+  const { error } = await supabase
+    .from("profile_entries")
+    .update({ description, updated_at: new Date().toISOString() })
+    .eq("id", entryId)
+    .eq("section", "skills");
+  if (error) return { error: error.message };
+  revalidatePath("/profile");
+  return {};
+}
+
 // ----------------------------------------------------------- documents ----
 
 export async function deleteDocument(docId: string, jobId: string | null) {

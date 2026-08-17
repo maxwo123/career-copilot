@@ -7,6 +7,7 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import type { Profile, ProfileEntry, Section } from "@/lib/types";
 import { SECTIONS, SECTION_LABELS } from "@/lib/types";
+import { SkillsManager } from "./skills-manager";
 
 const inputCls =
   "w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500";
@@ -151,6 +152,9 @@ export default async function ProfilePage() {
       {/* Sections */}
       {SECTIONS.map((section: Section) => {
         const sectionEntries = entries.filter((e) => e.section === section);
+        if (section === "skills") {
+          return <SkillsManager key={section} entries={sectionEntries} />;
+        }
         return (
           <section
             key={section}
