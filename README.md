@@ -67,6 +67,9 @@ work in a fresh chat without re-discovering it.
 - **Live app:** https://career-copilot-lemon-theta.vercel.app
 - **Vercel:** project `career-copilot` (team `maxs-projects-7003fe5c`).
   Deploy with `vercel deploy --prod --yes` from the repo root.
+- **Workflow rule: deploy after every change.** Whenever code changes are
+  made (by Claude or otherwise), finish by running
+  `vercel deploy --prod --yes` so the live app always matches the repo.
 - **Supabase:** project `career-copilot`, ref `gqwcxneilcdogfrvdhkw`
   (personal org). Schema lives in `supabase/schema.sql` (mirrored as the
   initial migration in `supabase/migrations/`); change it by adding a new

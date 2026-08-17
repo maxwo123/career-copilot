@@ -7,69 +7,58 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import type { Profile, ProfileEntry, Section } from "@/lib/types";
 import { SECTIONS, SECTION_LABELS } from "@/lib/types";
+import {
+  Button,
+  Card,
+  Field,
+  Input,
+  PageHeader,
+  SectionTitle,
+  Textarea,
+} from "@/lib/ui";
 import { SkillsManager } from "./skills-manager";
-
-const inputCls =
-  "w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500";
 
 function EntryFields({ entry }: { entry?: ProfileEntry }) {
   return (
     <>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <label className="block text-sm">
-          <span className="font-medium">Title</span>
-          <input
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Title">
+          <Input
             name="title"
             defaultValue={entry?.title}
-            placeholder="B.S. Computer Science / Software Intern / Project name / Skill group"
-            className={`mt-1 ${inputCls}`}
+            placeholder="B.S. Computer Science / Software Intern / Project name"
           />
-        </label>
-        <label className="block text-sm">
-          <span className="font-medium">Organization</span>
-          <input
+        </Field>
+        <Field label="Organization">
+          <Input
             name="organization"
             defaultValue={entry?.organization}
             placeholder="School, company, club..."
-            className={`mt-1 ${inputCls}`}
           />
-        </label>
+        </Field>
       </div>
-      <div className="grid gap-3 sm:grid-cols-3">
-        <label className="block text-sm">
-          <span className="font-medium">Location</span>
-          <input name="location" defaultValue={entry?.location} className={`mt-1 ${inputCls}`} />
-        </label>
-        <label className="block text-sm">
-          <span className="font-medium">Dates</span>
-          <input
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Field label="Location">
+          <Input name="location" defaultValue={entry?.location} />
+        </Field>
+        <Field label="Dates">
+          <Input
             name="date_range"
             defaultValue={entry?.date_range}
             placeholder="Aug 2024 – May 2028"
-            className={`mt-1 ${inputCls}`}
           />
-        </label>
-        <label className="block text-sm">
-          <span className="font-medium">Sort order</span>
-          <input
+        </Field>
+        <Field label="Sort order">
+          <Input
             name="sort_order"
             type="number"
             defaultValue={entry?.sort_order ?? 0}
-            className={`mt-1 ${inputCls}`}
           />
-        </label>
+        </Field>
       </div>
-      <label className="block text-sm">
-        <span className="font-medium">
-          Details (one bullet per line; for skills, a comma-separated list)
-        </span>
-        <textarea
-          name="description"
-          rows={4}
-          defaultValue={entry?.description}
-          className={`mt-1 ${inputCls}`}
-        />
-      </label>
+      <Field label="Details" hint="one bullet per line">
+        <Textarea name="description" rows={4} defaultValue={entry?.description} />
+      </Field>
     </>
   );
 }
@@ -89,65 +78,44 @@ export default async function ProfilePage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">
-      <div>
-        <h1 className="text-xl font-bold">Master profile</h1>
-        <p className="mt-1 text-sm text-stone-500">
-          This is the source of truth Claude tailors every resume from. Be
-          generous — include everything; tailoring means cutting, not
-          inventing.
-        </p>
-      </div>
+      <PageHeader
+        title="Master profile"
+        description="This is the source of truth Claude tailors every resume from. Be generous — include everything; tailoring means cutting, not inventing."
+      />
 
       {/* Header / contact */}
-      <section className="rounded-xl border border-stone-200 bg-white p-5">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-500">
-          Contact & summary
-        </h2>
-        <form action={saveProfileHeader} className="mt-3 space-y-3">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block text-sm">
-              <span className="font-medium">Full name</span>
-              <input name="full_name" defaultValue={profile?.full_name} className={`mt-1 ${inputCls}`} />
-            </label>
-            <label className="block text-sm">
-              <span className="font-medium">Email</span>
-              <input name="email" defaultValue={profile?.email} className={`mt-1 ${inputCls}`} />
-            </label>
-            <label className="block text-sm">
-              <span className="font-medium">Phone</span>
-              <input name="phone" defaultValue={profile?.phone} className={`mt-1 ${inputCls}`} />
-            </label>
-            <label className="block text-sm">
-              <span className="font-medium">Location</span>
-              <input name="location" defaultValue={profile?.location} className={`mt-1 ${inputCls}`} />
-            </label>
-            <label className="block text-sm">
-              <span className="font-medium">LinkedIn URL</span>
-              <input name="linkedin_url" defaultValue={profile?.linkedin_url} className={`mt-1 ${inputCls}`} />
-            </label>
-            <label className="block text-sm">
-              <span className="font-medium">GitHub URL</span>
-              <input name="github_url" defaultValue={profile?.github_url} className={`mt-1 ${inputCls}`} />
-            </label>
-            <label className="block text-sm sm:col-span-2">
-              <span className="font-medium">Website / portfolio</span>
-              <input name="website_url" defaultValue={profile?.website_url} className={`mt-1 ${inputCls}`} />
-            </label>
+      <Card className="p-5">
+        <SectionTitle>Contact &amp; summary</SectionTitle>
+        <form action={saveProfileHeader} className="mt-4 space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Full name">
+              <Input name="full_name" defaultValue={profile?.full_name} />
+            </Field>
+            <Field label="Email">
+              <Input name="email" defaultValue={profile?.email} />
+            </Field>
+            <Field label="Phone">
+              <Input name="phone" defaultValue={profile?.phone} />
+            </Field>
+            <Field label="Location">
+              <Input name="location" defaultValue={profile?.location} />
+            </Field>
+            <Field label="LinkedIn URL">
+              <Input name="linkedin_url" defaultValue={profile?.linkedin_url} />
+            </Field>
+            <Field label="GitHub URL">
+              <Input name="github_url" defaultValue={profile?.github_url} />
+            </Field>
+            <Field label="Website / portfolio" className="sm:col-span-2">
+              <Input name="website_url" defaultValue={profile?.website_url} />
+            </Field>
           </div>
-          <label className="block text-sm">
-            <span className="font-medium">Professional summary</span>
-            <textarea
-              name="summary"
-              rows={3}
-              defaultValue={profile?.summary}
-              className={`mt-1 ${inputCls}`}
-            />
-          </label>
-          <button className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
-            Save contact info
-          </button>
+          <Field label="Professional summary">
+            <Textarea name="summary" rows={3} defaultValue={profile?.summary} />
+          </Field>
+          <Button>Save contact info</Button>
         </form>
-      </section>
+      </Card>
 
       {/* Sections */}
       {SECTIONS.map((section: Section) => {
@@ -156,71 +124,67 @@ export default async function ProfilePage() {
           return <SkillsManager key={section} entries={sectionEntries} />;
         }
         return (
-          <section
-            key={section}
-            className="rounded-xl border border-stone-200 bg-white p-5"
-          >
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-500">
-              {SECTION_LABELS[section]} ({sectionEntries.length})
-            </h2>
+          <Card key={section} className="p-5">
+            <SectionTitle count={sectionEntries.length}>
+              {SECTION_LABELS[section]}
+            </SectionTitle>
 
-            <div className="mt-3 space-y-2">
-              {sectionEntries.map((entry) => (
-                <details
-                  key={entry.id}
-                  className="rounded-lg border border-stone-200"
-                >
-                  <summary className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm">
-                    <span className="font-medium">
-                      {entry.title || "(untitled)"}
-                    </span>
-                    {entry.organization && (
-                      <span className="text-stone-500">
-                        · {entry.organization}
+            {sectionEntries.length > 0 && (
+              <div className="mt-4 space-y-2">
+                {sectionEntries.map((entry) => (
+                  <details
+                    key={entry.id}
+                    className="rounded-lg border border-stone-200"
+                  >
+                    <summary className="grid cursor-pointer grid-cols-[1fr_auto] items-baseline gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-stone-50">
+                      <span className="min-w-0 truncate">
+                        <span className="font-medium text-stone-900">
+                          {entry.title || "(untitled)"}
+                        </span>
+                        {entry.organization && (
+                          <span className="text-stone-500">
+                            {" "}
+                            · {entry.organization}
+                          </span>
+                        )}
                       </span>
-                    )}
-                    <span className="ml-auto text-xs text-stone-400">
-                      {entry.date_range}
-                    </span>
-                  </summary>
-                  <div className="border-t border-stone-100 p-3">
-                    <form
-                      action={updateProfileEntry.bind(null, entry.id)}
-                      className="space-y-3"
-                    >
-                      <EntryFields entry={entry} />
-                      <div className="flex items-center gap-3">
-                        <button className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700">
-                          Save
-                        </button>
-                      </div>
-                    </form>
-                    <form
-                      action={deleteProfileEntry.bind(null, entry.id)}
-                      className="mt-2"
-                    >
-                      <button className="text-xs text-stone-400 hover:text-red-600">
-                        Delete entry
-                      </button>
-                    </form>
-                  </div>
-                </details>
-              ))}
-            </div>
+                      <span className="text-xs text-stone-400 tabular-nums">
+                        {entry.date_range}
+                      </span>
+                    </summary>
+                    <div className="border-t border-stone-100 p-4">
+                      <form
+                        action={updateProfileEntry.bind(null, entry.id)}
+                        className="space-y-4"
+                      >
+                        <EntryFields entry={entry} />
+                        <Button size="sm">Save</Button>
+                      </form>
+                      <form
+                        action={deleteProfileEntry.bind(null, entry.id)}
+                        className="mt-3"
+                      >
+                        <Button variant="danger" size="sm">
+                          Delete entry
+                        </Button>
+                      </form>
+                    </div>
+                  </details>
+                ))}
+              </div>
+            )}
 
-            <details className="mt-3">
-              <summary className="cursor-pointer text-sm font-medium text-indigo-600">
+            <details className="mt-4">
+              <summary className="cursor-pointer text-sm font-medium text-indigo-600 transition-colors hover:text-indigo-700">
                 + Add {SECTION_LABELS[section].toLowerCase()} entry
               </summary>
-              <form action={addProfileEntry} className="mt-3 space-y-3">
+              <form action={addProfileEntry} className="mt-4 space-y-4">
                 <input type="hidden" name="section" value={section} />
                 <EntryFields />
-                <button className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700">
-                  Add entry
-                </button>
+                <Button size="sm">Add entry</Button>
               </form>
             </details>
-          </section>
+          </Card>
         );
       })}
     </div>

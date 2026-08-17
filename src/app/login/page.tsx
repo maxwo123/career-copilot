@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { bootstrapAccount, signIn } from "@/app/auth-actions";
+import { Button, Field, Input } from "@/lib/ui";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -35,53 +36,66 @@ export default function LoginPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center p-6">
-      <div className="w-full max-w-sm rounded-2xl border border-stone-200 bg-white p-8 shadow-sm">
-        <h1 className="text-xl font-bold">Career Copilot</h1>
-        <p className="mt-1 text-sm text-stone-500">
-          Your job applications, tracked. Your resumes, crafted with Claude.
-        </p>
+      <div className="w-full max-w-sm">
+        <div className="rounded-2xl border border-stone-200 bg-white p-8 shadow-sm">
+          <h1 className="text-xl font-semibold tracking-tight text-stone-900">
+            Career<span className="text-indigo-600">Copilot</span>
+          </h1>
+          <p className="mt-1.5 text-sm leading-relaxed text-stone-500">
+            Your job applications, tracked. Your resumes, crafted with Claude.
+          </p>
 
-        <form
-          className="mt-6 space-y-3"
-          onSubmit={(e) => {
-            e.preventDefault();
-            submit("signin");
-          }}
-        >
-          <input
-            type="email"
-            required
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
-          />
-          <input
-            type="password"
-            required
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
-          />
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          {notice && <p className="text-sm text-green-700">{notice}</p>}
-          <button
-            type="submit"
-            disabled={pending}
-            className="w-full rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+          <form
+            className="mt-7 space-y-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              submit("signin");
+            }}
           >
-            {pending ? "Working..." : "Sign in"}
-          </button>
-        </form>
+            <Field label="Email">
+              <Input
+                type="email"
+                required
+                autoComplete="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </Field>
+            <Field label="Password">
+              <Input
+                type="password"
+                required
+                autoComplete="current-password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </Field>
+            {error && (
+              <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {error}
+              </p>
+            )}
+            {notice && (
+              <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+                {notice}
+              </p>
+            )}
+            <Button type="submit" disabled={pending} className="w-full">
+              {pending ? "Working..." : "Sign in"}
+            </Button>
+          </form>
 
-        <button
-          onClick={() => submit("create")}
-          disabled={pending}
-          className="mt-3 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-stone-600 hover:bg-stone-50 disabled:opacity-50"
-        >
-          First time? Create the account
-        </button>
+          <Button
+            variant="secondary"
+            onClick={() => submit("create")}
+            disabled={pending}
+            className="mt-3 w-full"
+          >
+            First time? Create the account
+          </Button>
+        </div>
       </div>
     </main>
   );

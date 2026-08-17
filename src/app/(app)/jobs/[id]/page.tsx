@@ -9,10 +9,22 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import type { DocumentRow, Job } from "@/lib/types";
 import { DOC_TYPE_LABELS, JOB_STATUSES } from "@/lib/types";
-import { STATUS_LABELS, StatusPill, formatDate } from "@/lib/ui";
+import {
+  Badge,
+  Button,
+  Card,
+  Field,
+  Input,
+  STATUS_LABELS,
+  SectionTitle,
+  Select,
+  StatusPill,
+  Textarea,
+  formatDate,
+} from "@/lib/ui";
 
-const inputCls =
-  "w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500";
+const summaryCls =
+  "flex cursor-pointer items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm font-medium text-stone-800 transition-colors hover:bg-stone-50";
 
 export default async function JobPage({
   params,
@@ -35,207 +47,216 @@ export default async function JobPage({
   const documents = (docRows ?? []) as DocumentRow[];
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">{job.title}</h1>
-          <p className="text-stone-500">
-            {job.company}
-            {job.location ? ` · ${job.location}` : ""}
-            {job.source ? ` · via ${job.source}` : ""}
-          </p>
-          {job.url && (
-            <a
-              href={job.url}
-              target="_blank"
-              rel="noreferrer"
-              className="text-sm text-indigo-600 underline"
-            >
-              View posting ↗
-            </a>
-          )}
+    <div className="mx-auto max-w-3xl space-y-8">
+      {/* Header */}
+      <div>
+        <Link
+          href="/"
+          className="text-xs font-medium text-stone-400 transition-colors hover:text-stone-600"
+        >
+          ← Dashboard
+        </Link>
+        <div className="mt-2 flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-semibold tracking-tight text-stone-900">
+              {job.title}
+            </h1>
+            <p className="mt-1 text-sm text-stone-500">
+              {job.company}
+              {job.location ? ` · ${job.location}` : ""}
+              {job.source ? ` · via ${job.source}` : ""}
+            </p>
+            {job.url && (
+              <a
+                href={job.url}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-1 inline-block text-sm font-medium text-indigo-600 underline underline-offset-2 hover:text-indigo-700"
+              >
+                View posting ↗
+              </a>
+            )}
+          </div>
+          <StatusPill status={job.status} />
         </div>
-        <StatusPill status={job.status} />
       </div>
 
       {/* Status + key dates */}
-      <section className="rounded-xl border border-stone-200 bg-white p-4">
+      <Card className="p-4">
         <form
           action={updateJobStatus.bind(null, job.id)}
           className="flex flex-wrap items-end gap-3"
         >
-          <label className="block text-sm">
-            <span className="font-medium">Status</span>
-            <select
-              name="status"
-              defaultValue={job.status}
-              className={`mt-1 ${inputCls}`}
-            >
+          <Field label="Status" className="w-44">
+            <Select name="status" defaultValue={job.status}>
               {JOB_STATUSES.map((s) => (
                 <option key={s} value={s}>
                   {STATUS_LABELS[s]}
                 </option>
               ))}
-            </select>
-          </label>
-          <button className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
-            Update
-          </button>
-          <div className="ml-auto space-y-0.5 text-right text-xs text-stone-400">
-            {job.deadline && <div>Deadline: {formatDate(job.deadline)}</div>}
-            {job.applied_at && <div>Applied: {formatDate(job.applied_at)}</div>}
-            <div>Added: {formatDate(job.created_at)}</div>
+            </Select>
+          </Field>
+          <Button>Update</Button>
+          <div className="ml-auto grid grid-cols-[auto_auto] gap-x-2 gap-y-0.5 text-xs">
+            {job.deadline && (
+              <>
+                <span className="text-right text-stone-400">Deadline</span>
+                <span className="text-stone-600 tabular-nums">
+                  {formatDate(job.deadline)}
+                </span>
+              </>
+            )}
+            {job.applied_at && (
+              <>
+                <span className="text-right text-stone-400">Applied</span>
+                <span className="text-stone-600 tabular-nums">
+                  {formatDate(job.applied_at)}
+                </span>
+              </>
+            )}
+            <span className="text-right text-stone-400">Added</span>
+            <span className="text-stone-600 tabular-nums">
+              {formatDate(job.created_at)}
+            </span>
           </div>
         </form>
-      </section>
+      </Card>
 
       {/* Documents */}
       <section>
-        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-stone-500">
-          Documents ({documents.length})
-        </h2>
+        <SectionTitle count={documents.length}>Documents</SectionTitle>
         {documents.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-indigo-200 bg-indigo-50/50 p-4 text-sm text-stone-600">
+          <Card className="mt-3 border-dashed border-indigo-200 bg-indigo-50/40 p-4 text-sm leading-relaxed text-stone-600 shadow-none">
             <p className="font-medium text-stone-800">
               No tailored documents yet.
             </p>
             <p className="mt-1">
               Open Claude Code and say something like:{" "}
-              <code className="rounded bg-white px-1.5 py-0.5 text-xs">
+              <code className="rounded-md bg-white px-1.5 py-0.5 font-mono text-xs">
                 Tailor a resume for the {job.company} job in Career Copilot
               </code>{" "}
               — Claude reads this job&apos;s description and your profile via
               MCP, then saves the result here.
             </p>
-          </div>
+          </Card>
         ) : (
-          <ul className="space-y-2">
+          <Card className="mt-3 divide-y divide-stone-100">
             {documents.map((d) => (
-              <li
+              <div
                 key={d.id}
-                className="flex items-center gap-3 rounded-xl border border-stone-200 bg-white p-3"
+                className="grid grid-cols-[auto_1fr_auto_auto] items-center gap-3 px-4 py-2.5"
               >
-                <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700">
-                  {DOC_TYPE_LABELS[d.doc_type]}
-                </span>
+                <Badge>{DOC_TYPE_LABELS[d.doc_type]}</Badge>
                 <Link
                   href={`/documents/${d.id}`}
-                  className="font-medium hover:text-indigo-700"
+                  className="min-w-0 truncate text-sm font-medium text-stone-900 hover:text-indigo-700"
                 >
                   {d.title || `${DOC_TYPE_LABELS[d.doc_type]} v${d.version}`}
+                  <span className="ml-1.5 text-xs font-normal text-stone-400 tabular-nums">
+                    v{d.version}
+                  </span>
                 </Link>
-                <span className="text-xs text-stone-400">v{d.version}</span>
-                <span className="ml-auto text-xs text-stone-400">
+                <span className="text-xs text-stone-400 tabular-nums">
                   {formatDate(d.created_at)}
                 </span>
                 <form action={deleteDocument.bind(null, d.id, job.id)}>
                   <button
-                    className="text-xs text-stone-300 hover:text-red-500"
+                    className="rounded p-1 text-stone-300 transition-colors hover:text-red-500"
                     title="Delete document"
                   >
                     ✕
                   </button>
                 </form>
-              </li>
+              </div>
             ))}
-          </ul>
+          </Card>
         )}
       </section>
 
       {/* Job description */}
-      <details className="rounded-xl border border-stone-200 bg-white" open={!job.jd_text}>
-        <summary className="cursor-pointer px-4 py-3 text-sm font-semibold">
-          Job description{" "}
-          {job.jd_text ? (
-            <span className="font-normal text-stone-400">
-              ({job.jd_text.length.toLocaleString()} chars)
+      <Card>
+        <details open={!job.jd_text}>
+          <summary className={summaryCls}>
+            <span>
+              Job description{" "}
+              {job.jd_text ? (
+                <span className="font-normal text-stone-400 tabular-nums">
+                  · {job.jd_text.length.toLocaleString()} chars
+                </span>
+              ) : (
+                <span className="font-normal text-amber-600">
+                  — missing! Paste it below so Claude can tailor documents.
+                </span>
+              )}
             </span>
-          ) : (
-            <span className="font-normal text-amber-600">
-              — missing! Paste it below so Claude can tailor documents.
-            </span>
-          )}
-        </summary>
-        <div className="border-t border-stone-100 p-4">
+            <span className="text-xs text-stone-300">▾</span>
+          </summary>
           {job.jd_text ? (
-            <pre className="max-h-96 overflow-auto whitespace-pre-wrap text-xs text-stone-600">
-              {job.jd_text}
-            </pre>
+            <div className="border-t border-stone-100 p-4">
+              <pre className="max-h-96 overflow-auto font-mono text-xs leading-relaxed whitespace-pre-wrap text-stone-600">
+                {job.jd_text}
+              </pre>
+            </div>
           ) : null}
-        </div>
-      </details>
+        </details>
+      </Card>
 
       {/* Edit details */}
-      <details className="rounded-xl border border-stone-200 bg-white">
-        <summary className="cursor-pointer px-4 py-3 text-sm font-semibold">
-          Edit details & notes
-        </summary>
-        <form
-          action={updateJobDetails.bind(null, job.id)}
-          className="space-y-3 border-t border-stone-100 p-4"
-        >
-          <div className="grid gap-3 sm:grid-cols-3">
-            <label className="block text-sm">
-              <span className="font-medium">Posting URL</span>
-              <input name="url" defaultValue={job.url} className={`mt-1 ${inputCls}`} />
-            </label>
-            <label className="block text-sm">
-              <span className="font-medium">Source</span>
-              <input name="source" defaultValue={job.source} className={`mt-1 ${inputCls}`} />
-            </label>
-            <label className="block text-sm">
-              <span className="font-medium">Location</span>
-              <input name="location" defaultValue={job.location} className={`mt-1 ${inputCls}`} />
-            </label>
-          </div>
-          <label className="block text-sm">
-            <span className="font-medium">Deadline</span>
-            <input
-              name="deadline"
-              type="date"
-              defaultValue={job.deadline ?? ""}
-              className={`mt-1 ${inputCls}`}
-            />
-          </label>
-          <label className="block text-sm">
-            <span className="font-medium">Job description</span>
-            <textarea
-              name="jd_text"
-              rows={10}
-              defaultValue={job.jd_text}
-              className={`mt-1 ${inputCls} font-mono text-xs`}
-            />
-          </label>
-          <label className="block text-sm">
-            <span className="font-medium">Notes</span>
-            <textarea
-              name="notes"
-              rows={3}
-              defaultValue={job.notes}
-              className={`mt-1 ${inputCls}`}
-            />
-          </label>
-          <button className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
-            Save changes
-          </button>
-        </form>
-      </details>
+      <Card>
+        <details>
+          <summary className={summaryCls}>
+            <span>Edit details &amp; notes</span>
+            <span className="text-xs text-stone-300">▾</span>
+          </summary>
+          <form
+            action={updateJobDetails.bind(null, job.id)}
+            className="space-y-4 border-t border-stone-100 p-4"
+          >
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Field label="Posting URL">
+                <Input name="url" defaultValue={job.url} />
+              </Field>
+              <Field label="Source">
+                <Input name="source" defaultValue={job.source} />
+              </Field>
+              <Field label="Location">
+                <Input name="location" defaultValue={job.location} />
+              </Field>
+            </div>
+            <Field label="Deadline" className="sm:w-56">
+              <Input name="deadline" type="date" defaultValue={job.deadline ?? ""} />
+            </Field>
+            <Field label="Job description">
+              <Textarea
+                name="jd_text"
+                rows={10}
+                defaultValue={job.jd_text}
+                className="font-mono text-xs"
+              />
+            </Field>
+            <Field label="Notes">
+              <Textarea name="notes" rows={3} defaultValue={job.notes} />
+            </Field>
+            <Button>Save changes</Button>
+          </form>
+        </details>
+      </Card>
 
       {job.notes && (
-        <section className="rounded-xl border border-stone-200 bg-white p-4">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-500">
-            Notes
-          </h2>
-          <p className="mt-1 whitespace-pre-wrap text-sm text-stone-700">
-            {job.notes}
-          </p>
+        <section>
+          <SectionTitle>Notes</SectionTitle>
+          <Card className="mt-3 p-4">
+            <p className="text-sm leading-relaxed whitespace-pre-wrap text-stone-700">
+              {job.notes}
+            </p>
+          </Card>
         </section>
       )}
 
       <form action={deleteJob.bind(null, job.id)} className="pt-2">
-        <button className="text-xs text-stone-400 hover:text-red-600">
+        <Button variant="danger" size="sm">
           Delete this job and all its documents
-        </button>
+        </Button>
       </form>
     </div>
   );
