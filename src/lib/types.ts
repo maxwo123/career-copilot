@@ -112,6 +112,20 @@ export interface DocumentRow {
   updated_at: string;
 }
 
+export interface TimelineEvent {
+  id: string;
+  company: string;
+  program: string;
+  window_label: string;
+  starts_on: string | null;
+  ends_on: string | null;
+  url: string;
+  notes: string;
+  job_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Activity {
   id: string;
   actor: "user" | "claude";

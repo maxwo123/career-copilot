@@ -6,6 +6,7 @@ import { cn } from "@/lib/ui";
 
 const LINKS = [
   { href: "/", label: "Dashboard" },
+  { href: "/timeline", label: "Timeline" },
   { href: "/profile", label: "Profile" },
 ];
 

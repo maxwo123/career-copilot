@@ -23,6 +23,12 @@ where you view and print them.
 5. **Track** — statuses flow saved → applied → interviewing → offer /
    rejected / withdrawn. The dashboard groups jobs, flags upcoming
    deadlines, and shows an activity feed of what Claude did.
+6. **Timeline** — `/timeline` shows when each company's application window
+   opens (grouped by month, "Open now" highlighting) so you apply in week
+   one. The app is just the UI: ask your agentic tool of choice (Claude
+   Code, Codex CLI, ...) to research companies' hiring cycles and import
+   events via MCP (`upsert_timeline_event`). One click promotes a timeline
+   event into a tracked job.
 
 ## Stack
 
@@ -49,6 +55,7 @@ claude mcp add --transport http career-copilot https://<your-app>/api/mcp \
 
 MCP tools: `get_profile`, `update_profile`, `upsert_profile_entry`,
 `delete_profile_entry`, `list_jobs`, `get_job`, `add_job`, `update_job`,
+`list_timeline`, `upsert_timeline_event`, `delete_timeline_event`,
 `save_document`, `list_documents`, `get_document`.
 
 Useful prompts:
@@ -58,6 +65,8 @@ Useful prompts:
 - "Analyze my fit for the &lt;company&gt; job, then tailor a resume and cover
   letter for it"
 - "Mark the &lt;company&gt; job as applied"
+- "Research when big pharma / healthcare ML summer internships open and
+  build my application timeline in Career Copilot"
 
 ## Project context (for new Claude Code sessions)
 
@@ -87,6 +96,9 @@ work in a fresh chat without re-discovering it.
 - **Data state:** profile populated from `Master CV.pdf` (Job Applications
   folder on Desktop); initial jobs migrated from the Notion "Job
   Applications" database with JDs fetched from the public postings.
+  Timeline seeded 2026-08-16 with the summer-2027 healthcare/biotech
+  internship cycle (Prep build phase, AstraZeneca, Pfizer, Roche,
+  Genentech, Broad BSRP, NIH SIP) from Max's screenshots + web research.
 
 ### Code map
 

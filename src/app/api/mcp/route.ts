@@ -133,6 +133,40 @@ const TOOLS: ToolDef[] = [
     },
   },
   {
+    name: "list_timeline",
+    description:
+      "The application timeline: when companies' internship/job application windows open and close, ordered chronologically. Use it to tell the candidate what is open now, what opens next, and what they should prepare for.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "upsert_timeline_event",
+    description:
+      "Add an application-window event to the timeline, or update one when event_id is given. This is how researched hiring timelines get into the app: after researching when a company's internship postings go live, save one event per company/program with the window dates and apply-early notes. Personal milestones (e.g. 'build phase: ship a project, update resume') use company 'Prep'.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        event_id: { type: "string", description: "Omit to create a new event" },
+        company: { type: "string", description: '"Genentech", "NIH", or "Prep" for personal milestones' },
+        program: { type: "string", description: 'Program/role name, e.g. "Summer Internship Program (SIP)"' },
+        window_label: { type: "string", description: 'Human-readable window, e.g. "Nov 2026 – Mar 2027 (rolling)"' },
+        starts_on: { type: "string", description: "YYYY-MM-DD — approximate window open (used for ordering)" },
+        ends_on: { type: "string", description: "YYYY-MM-DD — approximate close / deadline" },
+        url: { type: "string", description: "Program or careers page URL" },
+        notes: { type: "string", description: "Eligibility, acceptance stats, apply-week-one tips, sources" },
+      },
+      required: ["company"],
+    },
+  },
+  {
+    name: "delete_timeline_event",
+    description: "Delete a timeline event by id.",
+    inputSchema: {
+      type: "object",
+      properties: { event_id: { type: "string" } },
+      required: ["event_id"],
+    },
+  },
+  {
     name: "save_document",
     description:
       "Save a generated document (Markdown) into the app: a tailored resume, cover letter, interview prep, or match analysis. Attach it to a job with job_id (recommended); omit job_id for general documents like a master resume. Re-saving the same type+title for a job creates a new version automatically. The candidate views and prints it on the website.",
@@ -384,6 +418,64 @@ async function callTool(name: string, args: any): Promise<unknown> {
         jobId
       );
       return { ok: true, updated: changed };
+    }
+
+    case "list_timeline": {
+      const { data } = await supabase
+        .from("timeline_events")
+        .select("*")
+        .order("starts_on", { ascending: true, nullsFirst: false });
+      return (data ?? []).map((e: any) => ({
+        event_id: e.id,
+        company: e.company,
+        program: e.program,
+        window_label: e.window_label,
+        starts_on: e.starts_on,
+        ends_on: e.ends_on,
+        url: e.url,
+        notes: e.notes,
+        tracked_job_id: e.job_id,
+      }));
+    }
+
+    case "upsert_timeline_event": {
+      const values: Record<string, unknown> = {
+        program: str(args?.program),
+        window_label: str(args?.window_label),
+        starts_on: str(args?.starts_on) || null,
+        ends_on: str(args?.ends_on) || null,
+        url: str(args?.url),
+        notes: str(args?.notes),
+      };
+      if (args?.event_id) {
+        if (str(args?.company)) values.company = str(args.company);
+        const { error } = await supabase
+          .from("timeline_events")
+          .update({ ...values, updated_at: new Date().toISOString() })
+          .eq("id", str(args.event_id));
+        if (error) throw new Error(error.message);
+        await log(supabase, "upsert_timeline_event", `Timeline: updated ${str(args?.company) || "event"}`);
+        return { ok: true, event_id: args.event_id };
+      }
+      const company = str(args?.company);
+      if (!company) throw new Error("company is required.");
+      const { data, error } = await supabase
+        .from("timeline_events")
+        .insert({ ...values, company })
+        .select("id")
+        .single();
+      if (error) throw new Error(error.message);
+      await log(supabase, "upsert_timeline_event", `Timeline: added ${company} — ${str(args?.program)}`);
+      return { ok: true, event_id: data.id, view_url: "/timeline" };
+    }
+
+    case "delete_timeline_event": {
+      const { error } = await supabase
+        .from("timeline_events")
+        .delete()
+        .eq("id", str(args?.event_id));
+      if (error) throw new Error(error.message);
+      return { ok: true };
     }
 
     case "save_document": {

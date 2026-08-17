@@ -94,6 +94,79 @@ export async function deleteJob(jobId: string) {
   redirect("/");
 }
 
+// ------------------------------------------------------------ timeline ----
+
+export async function addTimelineEvent(formData: FormData) {
+  const supabase = await createClient();
+  const company = String(formData.get("company") ?? "").trim();
+  if (!company) return;
+
+  const starts = String(formData.get("starts_on") ?? "").trim();
+  const ends = String(formData.get("ends_on") ?? "").trim();
+  const { error } = await supabase.from("timeline_events").insert({
+    company,
+    program: String(formData.get("program") ?? "").trim(),
+    window_label: String(formData.get("window_label") ?? "").trim(),
+    starts_on: starts || null,
+    ends_on: ends || null,
+    url: String(formData.get("url") ?? "").trim(),
+    notes: String(formData.get("notes") ?? "").trim(),
+  });
+  if (error) throw new Error(error.message);
+  await logActivity(supabase, "add_timeline_event", `Timeline: added ${company}`);
+  revalidatePath("/timeline");
+}
+
+export async function deleteTimelineEvent(eventId: string) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("timeline_events")
+    .delete()
+    .eq("id", eventId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/timeline");
+}
+
+// Promote a timeline event into a tracked job (status "saved") and link it.
+export async function trackTimelineEvent(eventId: string) {
+  const supabase = await createClient();
+  const { data: eventRow } = await supabase
+    .from("timeline_events")
+    .select("*")
+    .eq("id", eventId)
+    .maybeSingle();
+  if (!eventRow) return;
+  if (eventRow.job_id) redirect(`/jobs/${eventRow.job_id}`);
+
+  const { data: job, error } = await supabase
+    .from("jobs")
+    .insert({
+      company: eventRow.company,
+      title: eventRow.program || "Internship",
+      url: eventRow.url,
+      source: "timeline",
+      notes: eventRow.notes,
+      deadline: eventRow.ends_on,
+    })
+    .select("id")
+    .single();
+  if (error) throw new Error(error.message);
+
+  await supabase
+    .from("timeline_events")
+    .update({ job_id: job.id, updated_at: new Date().toISOString() })
+    .eq("id", eventId);
+  await logActivity(
+    supabase,
+    "track_timeline_event",
+    `Timeline → tracker: ${eventRow.program || "Internship"} @ ${eventRow.company}`,
+    job.id
+  );
+  revalidatePath("/timeline");
+  revalidatePath("/");
+  redirect(`/jobs/${job.id}`);
+}
+
 // ------------------------------------------------------------- profile ----
 
 export async function saveProfileHeader(formData: FormData) {
