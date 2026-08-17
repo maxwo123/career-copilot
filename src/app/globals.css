@@ -1,0 +1,120 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f8f8f7;
+  --foreground: #1c1917;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Markdown document rendering (tailored resumes, cover letters). */
+.doc-prose {
+  line-height: 1.55;
+  font-size: 0.925rem;
+}
+.doc-prose h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+.doc-prose h2 {
+  font-size: 1.02rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid #d6d3d1;
+  padding-bottom: 0.15rem;
+  margin-top: 1.1rem;
+  margin-bottom: 0.5rem;
+}
+.doc-prose h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-top: 0.75rem;
+  margin-bottom: 0.15rem;
+}
+.doc-prose p {
+  margin-bottom: 0.5rem;
+}
+.doc-prose ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+  margin-bottom: 0.6rem;
+}
+.doc-prose ol {
+  list-style: decimal;
+  padding-left: 1.25rem;
+  margin-bottom: 0.6rem;
+}
+.doc-prose li {
+  margin-bottom: 0.2rem;
+}
+.doc-prose strong {
+  font-weight: 600;
+}
+.doc-prose a {
+  color: #4338ca;
+  text-decoration: underline;
+}
+.doc-prose hr {
+  border-color: #d6d3d1;
+  margin: 0.9rem 0;
+}
+.doc-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 0.75rem;
+  font-size: 0.875rem;
+}
+.doc-prose th,
+.doc-prose td {
+  border: 1px solid #d6d3d1;
+  padding: 0.3rem 0.5rem;
+  text-align: left;
+}
+.doc-prose blockquote {
+  border-left: 3px solid #d6d3d1;
+  padding-left: 0.75rem;
+  color: #57534e;
+  margin-bottom: 0.6rem;
+}
+.doc-prose code {
+  background: #f5f5f4;
+  padding: 0.1rem 0.3rem;
+  border-radius: 0.25rem;
+  font-size: 0.85em;
+}
+
+/* Print: the document page becomes the printable resume/letter itself. */
+@media print {
+  body {
+    background: #fff;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-sheet {
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+  }
+  .doc-prose {
+    font-size: 10.5pt;
+    line-height: 1.4;
+  }
+  .doc-prose a {
+    color: inherit;
+    text-decoration: none;
+  }
+  @page {
+    margin: 0.6in;
+  }
+}
