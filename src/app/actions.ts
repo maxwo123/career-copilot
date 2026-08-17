@@ -94,6 +94,46 @@ export async function deleteJob(jobId: string) {
   redirect("/");
 }
 
+// ------------------------------------------------- career coach (home) ----
+
+export async function saveCareerNarrative(formData: FormData) {
+  const supabase = await createClient();
+  const values = {
+    starting_point: String(formData.get("starting_point") ?? "").trim(),
+    current_state: String(formData.get("current_state") ?? "").trim(),
+    goals: String(formData.get("goals") ?? "").trim(),
+    interests: String(formData.get("interests") ?? "").trim(),
+    constraints_text: String(formData.get("constraints_text") ?? "").trim(),
+    gap_analysis: String(formData.get("gap_analysis") ?? "").trim(),
+    updated_at: new Date().toISOString(),
+  };
+  const { data: existing } = await supabase
+    .from("career_narrative")
+    .select("id")
+    .maybeSingle();
+  const { error } = existing
+    ? await supabase.from("career_narrative").update(values).eq("id", existing.id)
+    : await supabase.from("career_narrative").insert(values);
+  if (error) throw new Error(error.message);
+  revalidatePath("/profile");
+}
+
+export async function setActionItemStatus(
+  actionId: string,
+  status: "open" | "done" | "dismissed"
+) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("action_items")
+    .update({
+      status,
+      completed_at: status === "done" ? new Date().toISOString() : null,
+    })
+    .eq("id", actionId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/");
+}
+
 // ------------------------------------------------------------ timeline ----
 
 export async function addTimelineEvent(formData: FormData) {

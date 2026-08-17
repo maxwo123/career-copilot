@@ -52,12 +52,42 @@ create table if not exists documents (
   id uuid primary key default gen_random_uuid(),
   job_id uuid references jobs(id) on delete cascade, -- null = general (e.g. master resume)
   doc_type text not null check (doc_type in
-    ('resume', 'cover_letter', 'interview_prep', 'match_analysis', 'other')),
+    ('resume', 'cover_letter', 'interview_prep', 'match_analysis', 'briefing', 'other')),
   title text not null default '',
   content_md text not null default '',
   version int not null default 1,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
+);
+
+-- One-row table: the career narrative. AI tools read this FIRST to get a
+-- holistic picture, and write refinements back after guidance conversations.
+create table if not exists career_narrative (
+  id uuid primary key default gen_random_uuid(),
+  starting_point text not null default '', -- where they began: background, first exposures
+  current_state text not null default '',  -- where they are now: skills, experience, knowledge level
+  goals text not null default '',          -- where they're headed: target roles, industry, timeframe
+  interests text not null default '',      -- what pulls them: topics, problems, environments
+  constraints_text text not null default '',-- realities: time, location, finances, visa, GPA
+  gap_analysis text not null default '',   -- what stands between current_state and goals
+  coach_notes text not null default '',    -- AI-maintained observations that persist across tools/sessions
+  updated_at timestamptz not null default now()
+);
+
+-- Coach-assigned next steps shown on the dashboard: learn X, read Y, apply to Z.
+create table if not exists action_items (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  detail text not null default '',
+  category text not null default 'other' check (category in
+    ('skill', 'knowledge', 'apply', 'document', 'other')),
+  status text not null default 'open' check (status in ('open', 'done', 'dismissed')),
+  due_on date,
+  url text not null default '',
+  source text not null default 'claude' check (source in ('user', 'claude')),
+  sort_order int not null default 0,
+  created_at timestamptz not null default now(),
+  completed_at timestamptz
 );
 
 -- Application timelines: when companies' internship/job postings open, so the
@@ -93,11 +123,13 @@ alter table jobs enable row level security;
 alter table documents enable row level security;
 alter table activity enable row level security;
 alter table timeline_events enable row level security;
+alter table career_narrative enable row level security;
+alter table action_items enable row level security;
 
 do $$
 declare t text;
 begin
-  foreach t in array array['profile', 'profile_entries', 'jobs', 'documents', 'activity', 'timeline_events'] loop
+  foreach t in array array['profile', 'profile_entries', 'jobs', 'documents', 'activity', 'timeline_events', 'career_narrative', 'action_items'] loop
     execute format('create policy "auth full access" on %I for all to authenticated using (true) with check (true)', t);
   end loop;
 end $$;

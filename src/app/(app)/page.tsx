@@ -1,7 +1,8 @@
 import Link from "next/link";
+import { setActionItemStatus } from "@/app/actions";
 import { createClient } from "@/lib/supabase/server";
-import type { Activity, Job, JobStatus } from "@/lib/types";
-import { JOB_STATUSES } from "@/lib/types";
+import type { ActionCategory, ActionItem, Activity, Job, JobStatus } from "@/lib/types";
+import { ACTION_CATEGORY_LABELS, JOB_STATUSES } from "@/lib/types";
 import {
   Card,
   STATUS_LABELS,
@@ -13,6 +14,14 @@ import {
   formatDate,
 } from "@/lib/ui";
 
+const CATEGORY_CHIP: Record<ActionCategory, string> = {
+  skill: "border-indigo-200 bg-indigo-50 text-indigo-700",
+  knowledge: "border-sky-200 bg-sky-50 text-sky-700",
+  apply: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  document: "border-violet-200 bg-violet-50 text-violet-700",
+  other: "border-stone-200 bg-stone-100 text-stone-600",
+};
+
 function deadlineLabel(days: number): string {
   if (days < 0) return "past due";
   if (days === 0) return "due today";
@@ -21,16 +30,24 @@ function deadlineLabel(days: number): string {
 
 export default async function Dashboard() {
   const supabase = await createClient();
-  const [{ data: jobRows }, { data: activityRows }] = await Promise.all([
-    supabase.from("jobs").select("*").order("created_at", { ascending: false }),
-    supabase
-      .from("activity")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(8),
-  ]);
+  const [{ data: jobRows }, { data: activityRows }, { data: actionRows }] =
+    await Promise.all([
+      supabase.from("jobs").select("*").order("created_at", { ascending: false }),
+      supabase
+        .from("activity")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(8),
+      supabase
+        .from("action_items")
+        .select("*")
+        .eq("status", "open")
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: true }),
+    ]);
   const jobs = (jobRows ?? []) as Job[];
   const activity = (activityRows ?? []) as Activity[];
+  const actions = (actionRows ?? []) as ActionItem[];
 
   const byStatus = new Map<JobStatus, Job[]>(
     JOB_STATUSES.map((s) => [s, jobs.filter((j) => j.status === s)])
@@ -65,6 +82,70 @@ export default async function Dashboard() {
           );
         })}
       </Card>
+
+      {actions.length > 0 && (
+        <section>
+          <SectionTitle count={actions.length}>Next actions</SectionTitle>
+          <Card className="mt-3 divide-y divide-stone-100">
+            {actions.map((a) => (
+              <div key={a.id} className="flex items-start gap-3 px-4 py-3">
+                <span
+                  className={cn(
+                    "mt-0.5 inline-flex w-20 shrink-0 justify-center rounded-full border px-2 py-0.5 text-[11px] font-medium",
+                    CATEGORY_CHIP[a.category]
+                  )}
+                >
+                  {ACTION_CATEGORY_LABELS[a.category]}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-medium text-stone-900">
+                    {a.url ? (
+                      <a
+                        href={a.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="hover:text-indigo-700 hover:underline hover:underline-offset-2"
+                      >
+                        {a.title} ↗
+                      </a>
+                    ) : (
+                      a.title
+                    )}
+                  </div>
+                  {a.detail && (
+                    <p className="mt-0.5 text-xs leading-relaxed text-stone-500">
+                      {a.detail}
+                    </p>
+                  )}
+                  {a.due_on && (
+                    <p className="mt-0.5 text-xs text-stone-400 tabular-nums">
+                      Due {formatDate(a.due_on)}
+                    </p>
+                  )}
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  <form action={setActionItemStatus.bind(null, a.id, "done")}>
+                    <button
+                      className="rounded-md border border-stone-200 px-2 py-1 text-xs font-medium text-stone-500 transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700"
+                      title="Mark done"
+                    >
+                      ✓ Done
+                    </button>
+                  </form>
+                  <form action={setActionItemStatus.bind(null, a.id, "dismissed")}>
+                    <button
+                      className="rounded-md p-1 text-stone-300 transition-colors hover:text-stone-500"
+                      title="Dismiss"
+                    >
+                      ✕
+                    </button>
+                  </form>
+                </div>
+              </div>
+            ))}
+          </Card>
+        </section>
+      )}
 
       {dueSoon.length > 0 && (
         <section>

@@ -29,6 +29,16 @@ where you view and print them.
    Code, Codex CLI, ...) to research companies' hiring cycles and import
    events via MCP (`upsert_timeline_event`). One click promotes a timeline
    event into a tracked job.
+7. **Career coach** — three pillars beyond documents: a **career narrative**
+   (on `/profile`; the holistic where-I-started / where-I-am / where-I'm-going
+   record every connected AI reads FIRST and refines after guidance
+   conversations — the app is the shared memory between AI tools), **action
+   items** on the dashboard (learn X, read Y, apply to Z — AI-assigned via
+   MCP, checked off by the user), and **industry briefings** (doc type
+   `briefing`: AI-curated news written at the comprehension level recorded
+   in the narrative). The MCP server's `initialize` instructions teach any
+   connected agent this workflow, including checking for pending work
+   (stale briefing, empty narrative) at session start.
 
 ## Stack
 
@@ -46,14 +56,27 @@ where you view and print them.
    **"First time? Create the account"** once — that's your login.
 4. Set the same four env vars on Vercel and deploy.
 
-## Connecting Claude Code
+## Connecting your AI
 
-```bash
-claude mcp add --transport http career-copilot https://<your-app>/api/mcp \
-  --header "Authorization: Bearer <MCP_TOKEN>"
-```
+The in-app `/connect` page shows ready-to-copy instructions. Two endpoints,
+same server (`src/lib/mcp-server.ts`):
 
-MCP tools: `get_profile`, `update_profile`, `upsert_profile_entry`,
+- **CLI agents** (can send headers):
+
+  ```bash
+  claude mcp add --transport http career-copilot https://<your-app>/api/mcp \
+    --header "Authorization: Bearer <MCP_TOKEN>"
+  ```
+
+- **claude.ai / ChatGPT custom connectors** (authless/OAuth only — no custom
+  headers): use the token-in-path URL `https://<your-app>/api/mcp/<MCP_TOKEN>`.
+  Claude: Settings → Connectors → Add custom connector (works on mobile once
+  added). ChatGPT: Settings → Apps → Developer mode (Plus/Pro+; write tools
+  may be limited). The URL is the secret — treat it like a password.
+
+MCP tools: `get_career_narrative`, `update_career_narrative`,
+`list_action_items`, `upsert_action_item`, `delete_action_item`,
+`get_profile`, `update_profile`, `upsert_profile_entry`,
 `delete_profile_entry`, `list_jobs`, `get_job`, `add_job`, `update_job`,
 `list_timeline`, `upsert_timeline_event`, `delete_timeline_event`,
 `save_document`, `list_documents`, `get_document`.
@@ -67,6 +90,10 @@ Useful prompts:
 - "Mark the &lt;company&gt; job as applied"
 - "Research when big pharma / healthcare ML summer internships open and
   build my application timeline in Career Copilot"
+- "Interview me and fill in my career narrative in Career Copilot"
+- "What should I be working on? Check my narrative and action items"
+- "Research this week's news for my target industry and save me a briefing
+  at my level"
 
 ## Project context (for new Claude Code sessions)
 

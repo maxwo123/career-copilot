@@ -49,6 +49,7 @@ export type DocType =
   | "cover_letter"
   | "interview_prep"
   | "match_analysis"
+  | "briefing"
   | "other";
 
 export const DOC_TYPE_LABELS: Record<DocType, string> = {
@@ -56,6 +57,7 @@ export const DOC_TYPE_LABELS: Record<DocType, string> = {
   cover_letter: "Cover letter",
   interview_prep: "Interview prep",
   match_analysis: "Match analysis",
+  briefing: "Industry briefing",
   other: "Document",
 };
 
@@ -110,6 +112,51 @@ export interface DocumentRow {
   version: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface CareerNarrative {
+  id: string;
+  starting_point: string;
+  current_state: string;
+  goals: string;
+  interests: string;
+  constraints_text: string;
+  gap_analysis: string;
+  coach_notes: string;
+  updated_at: string;
+}
+
+export type ActionCategory = "skill" | "knowledge" | "apply" | "document" | "other";
+export type ActionStatus = "open" | "done" | "dismissed";
+
+export const ACTION_CATEGORIES: ActionCategory[] = [
+  "skill",
+  "knowledge",
+  "apply",
+  "document",
+  "other",
+];
+
+export const ACTION_CATEGORY_LABELS: Record<ActionCategory, string> = {
+  skill: "Skill",
+  knowledge: "Knowledge",
+  apply: "Apply",
+  document: "Document",
+  other: "To-do",
+};
+
+export interface ActionItem {
+  id: string;
+  title: string;
+  detail: string;
+  category: ActionCategory;
+  status: ActionStatus;
+  due_on: string | null;
+  url: string;
+  source: "user" | "claude";
+  sort_order: number;
+  created_at: string;
+  completed_at: string | null;
 }
 
 export interface TimelineEvent {
