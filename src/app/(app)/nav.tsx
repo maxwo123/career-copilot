@@ -6,7 +6,7 @@ import { cn } from "@/lib/ui";
 
 const LINKS = [
   { href: "/", label: "Dashboard" },
-  { href: "/timeline", label: "Timeline" },
+  { href: "/applications", label: "Applications" },
   { href: "/profile", label: "Profile" },
   { href: "/connect", label: "Connect AI" },
 ];
@@ -18,10 +18,12 @@ export function NavLinks() {
       {LINKS.map((link) => {
         const active =
           link.href === "/"
-            ? pathname === "/" ||
-              pathname.startsWith("/jobs") ||
-              pathname.startsWith("/documents")
-            : pathname.startsWith(link.href);
+            ? pathname === "/"
+            : link.href === "/applications"
+              ? pathname.startsWith("/applications") ||
+                pathname.startsWith("/jobs") ||
+                pathname.startsWith("/documents")
+              : pathname.startsWith(link.href);
         return (
           <Link
             key={link.href}

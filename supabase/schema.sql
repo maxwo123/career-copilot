@@ -74,13 +74,13 @@ create table if not exists career_narrative (
   updated_at timestamptz not null default now()
 );
 
--- Notion-lite blocks: the dashboard "Notes & actions" document, where text
--- notes and checkable tasks interleave freely (AI-composed via MCP).
-create table if not exists coach_blocks (
+-- Notes & actions: titled sections on the dashboard. Each note = bold title
+-- + free-text body; body lines starting with "[ ] " / "[x] " render as
+-- checkable to-dos (markdown-task style, AI-composed via MCP).
+create table if not exists coach_notes (
   id uuid primary key default gen_random_uuid(),
-  kind text not null default 'text' check (kind in ('text', 'task')),
-  content text not null default '',  -- multiline; first line reads as the block's lead
-  checked boolean not null default false, -- tasks only
+  title text not null default '',
+  body text not null default '',  -- multiline; "[ ] task" / "[x] done" lines are checkboxes
   sort_order double precision not null default 0, -- float so inserts land between neighbors
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -120,12 +120,12 @@ alter table documents enable row level security;
 alter table activity enable row level security;
 alter table timeline_events enable row level security;
 alter table career_narrative enable row level security;
-alter table coach_blocks enable row level security;
+alter table coach_notes enable row level security;
 
 do $$
 declare t text;
 begin
-  foreach t in array array['profile', 'profile_entries', 'jobs', 'documents', 'activity', 'timeline_events', 'career_narrative', 'coach_blocks'] loop
+  foreach t in array array['profile', 'profile_entries', 'jobs', 'documents', 'activity', 'timeline_events', 'career_narrative', 'coach_notes'] loop
     execute format('create policy "auth full access" on %I for all to authenticated using (true) with check (true)', t);
   end loop;
 end $$;

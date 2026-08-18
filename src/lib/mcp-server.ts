@@ -19,21 +19,20 @@ const PROTOCOL_VERSION = "2025-03-26";
 const JOB_STATUSES = ["saved", "applied", "interviewing", "offer", "rejected", "withdrawn"];
 const SECTIONS = ["education", "experience", "projects", "leadership", "skills", "certifications", "other"];
 const DOC_TYPES = ["resume", "cover_letter", "interview_prep", "match_analysis", "briefing", "other"];
-const BLOCK_KINDS = ["text", "task"];
 
 const SERVER_INSTRUCTIONS = `You are the intelligence layer for this career-growth app; the app itself has no AI. The app keeps a hidden "career narrative" — behind-the-scenes coach memory about the candidate (where they started, where they are now, where they're headed, interests, constraints, gaps, coach notes). It is NOT visible anywhere in the app's UI: connected AI tools like you are its only readers and writers, and it is how coaching context survives across sessions and across different AI tools.
 
 Session protocol:
 1. LOAD CONTEXT FIRST: call get_career_narrative before answering any career question. It returns the coach memory plus pending work (open action items, briefing staleness).
-2. FIRST TIME (it returns first_time: true): the candidate has no coach memory yet. Proactively suggest a short guided interview — the response includes the question guide. Ask ONE question at a time, conversationally; after the interview, save the picture with update_career_narrative and seed the dashboard document with a short intro note plus 3–5 task blocks via upsert_block. Tell the candidate this builds a private career memory that makes every future conversation (in any AI tool) smarter.
+2. FIRST TIME (it returns first_time: true): the candidate has no coach memory yet. Proactively suggest a short guided interview — the response includes the question guide. Ask ONE question at a time, conversationally; after the interview, save the picture with update_career_narrative and seed the dashboard with 2–4 sections via upsert_note, each with a few "[ ] task" lines. Tell the candidate this builds a private career memory that makes every future conversation (in any AI tool) smarter.
 3. RETURNING: the memory should progress over time. Whenever a conversation reveals something new — a skill gained, a goal sharpened, a worry, a win — merge it in via update_career_narrative. Refine the existing text (you loaded it in step 1); never wholesale overwrite. Leave coach_notes for the next session.
 4. TRANSPARENCY: if the candidate asks what you know about them, share the narrative content openly — it is their data, just stored out of the UI's way.
-5. THE DASHBOARD IS A BLOCK DOCUMENT (Notion-style): text notes and checkable tasks interleave freely via list_blocks / upsert_block / delete_block. Compose it like a coach's whiteboard — a short narrative note introducing a theme, then its task blocks beneath, positioned with after_block_id. Keep it curated: readable in about one screen, ≤6 open tasks, check tasks off as the candidate reports progress, and delete stale blocks. Long notes are fine — the UI collapses them to a fading preview.
+5. THE DASHBOARD IS A LIST OF SECTIONS (list_notes / upsert_note / delete_note): each section has a bold title and a free-text body where lines written as "[ ] task" render as checkable to-dos and "[x] task" as done. Compose it like a coach's whiteboard — one section per theme (e.g. "Start an ML fundamentals course"), body mixing short explanation, links, and to-do lines. Keep it curated: a handful of sections, ≤6 unchecked "[ ]" lines total, mark lines "[x]" as the candidate reports progress, delete stale sections. Long bodies are fine — the UI collapses them to a fading preview.
 6. Keep briefings current (save_document doc_type "briefing", vocabulary matched to the level recorded in current_state), and resumes truthful (tailoring selects and rephrases real profile entries, never invents).`;
 
 const INTERVIEW_GUIDE = {
   style:
-    "One question at a time, conversational, ~5 minutes total. Follow up naturally; skip questions they've already answered. Afterwards: save with update_career_narrative, then seed the dashboard with an intro note plus 3–5 task blocks (upsert_block).",
+    "One question at a time, conversational, ~5 minutes total. Follow up naturally; skip questions they've already answered. Afterwards: save with update_career_narrative, then seed the dashboard with 2–4 sections via upsert_note, each with a few '[ ] task' lines.",
   questions: [
     { field: "starting_point", ask: "What first got you interested in your field? Where did this all start?" },
     { field: "current_state", ask: "Where are you right now — school year / role, and what skills or experience have you picked up so far?" },
@@ -75,37 +74,40 @@ const TOOLS: ToolDef[] = [
     },
   },
   {
-    name: "list_blocks",
+    name: "list_notes",
     description:
-      "The dashboard 'Notes & actions' document: an ordered list of blocks where 'text' notes and checkable 'task' blocks interleave, Notion-style. Read it before editing so you place new blocks sensibly and avoid duplicates.",
+      "The dashboard 'Notes & actions' sections: each has a bold title and a free-text body where lines '[ ] task' are open to-dos and '[x] task' are done. Read before editing so you update the right section instead of duplicating it.",
     inputSchema: { type: "object", properties: {} },
   },
   {
-    name: "upsert_block",
+    name: "upsert_note",
     description:
-      "Add a block to the dashboard document, or update one when block_id is given (e.g. checked: true when the candidate reports progress). Compose intertwined structure: a short text note introducing a theme, then its task blocks placed with after_block_id. Content is multiline — first line is the lead; put explanation and links on following lines (URLs render as clickable links). Task first lines should be imperative and specific: 'Finish week 2 of Andrew Ng ML course'.",
+      "Add a dashboard section, or update one when note_id is given. One section per theme — title short and specific ('Start an ML fundamentals course'), body mixing brief explanation, links (URLs render clickable), and to-do lines written as '[ ] task'. To check a to-do off after the candidate reports progress, resend the body with that line as '[x] task'. Only provided fields change.",
     inputSchema: {
       type: "object",
       properties: {
-        block_id: { type: "string", description: "Omit to create a new block" },
-        kind: { type: "string", enum: BLOCK_KINDS, description: "'text' note or checkable 'task'" },
-        content: { type: "string", description: "Multiline; first line is the lead" },
-        checked: { type: "boolean", description: "Tasks only — true marks it done (strikethrough, kept in place)" },
-        after_block_id: {
+        note_id: { type: "string", description: "Omit to create a new section" },
+        title: { type: "string", description: "Bold section title" },
+        body: {
           type: "string",
-          description: "Creation only: place the new block right after this block; omit to append at the end",
+          description:
+            "Multiline free text; '[ ] task' lines render as checkboxes, '[x] task' as checked",
+        },
+        after_note_id: {
+          type: "string",
+          description: "Creation only: place the new section right after this one; omit to append at the end",
         },
       },
     },
   },
   {
-    name: "delete_block",
+    name: "delete_note",
     description:
-      "Delete a block by id. Use to prune stale or completed clutter and keep the document readable in about one screen.",
+      "Delete a dashboard section by id. Use to prune stale or completed clutter and keep the dashboard readable in about one screen.",
     inputSchema: {
       type: "object",
-      properties: { block_id: { type: "string" } },
-      required: ["block_id"],
+      properties: { note_id: { type: "string" } },
+      required: ["note_id"],
     },
   },
   {
@@ -303,14 +305,10 @@ async function callTool(name: string, args: any): Promise<unknown> {
 
   switch (name) {
     case "get_career_narrative": {
-      const [{ data: narrativeRow }, { count: openActions }, { data: latestBriefing }] =
+      const [{ data: narrativeRow }, { data: noteRows }, { data: latestBriefing }] =
         await Promise.all([
           supabase.from("career_narrative").select("*").maybeSingle(),
-          supabase
-            .from("coach_blocks")
-            .select("id", { count: "exact", head: true })
-            .eq("kind", "task")
-            .eq("checked", false),
+          supabase.from("coach_notes").select("body"),
           supabase
             .from("documents")
             .select("created_at, title")
@@ -340,7 +338,10 @@ async function callTool(name: string, args: any): Promise<unknown> {
             }
           : null,
         pending_work: {
-          open_tasks: openActions ?? 0,
+          open_tasks: (noteRows ?? []).reduce(
+            (sum: number, n: any) => sum + ((n.body.match(/^\[ \]/gm) ?? []).length),
+            0
+          ),
           latest_briefing: briefing
             ? { title: briefing.title, age_days: briefingAgeDays, stale: (briefingAgeDays ?? 0) > 7 }
             : { note: "No industry briefing yet — consider researching and saving one (doc_type 'briefing')." },
@@ -348,7 +349,7 @@ async function callTool(name: string, args: any): Promise<unknown> {
         ...(empty
           ? {
               next_step:
-                "No coach memory exists yet — this looks like the candidate's first session. Suggest a short guided interview to build their private career memory (it makes every future conversation, in any AI tool, smarter). Then save via update_career_narrative and seed the dashboard with an intro note plus 3–5 task blocks (upsert_block).",
+                "No coach memory exists yet — this looks like the candidate's first session. Suggest a short guided interview to build their private career memory (it makes every future conversation, in any AI tool, smarter). Then save via update_career_narrative and seed the dashboard with 2–4 sections via upsert_note, each with a few '[ ] task' lines.",
               interview_guide: INTERVIEW_GUIDE,
             }
           : {
@@ -382,82 +383,75 @@ async function callTool(name: string, args: any): Promise<unknown> {
       return { ok: true, updated: Object.keys(patch) };
     }
 
-    case "list_blocks": {
+    case "list_notes": {
       const { data } = await supabase
-        .from("coach_blocks")
+        .from("coach_notes")
         .select("*")
         .order("sort_order", { ascending: true })
         .order("created_at", { ascending: true });
-      return (data ?? []).map((b: any) => ({
-        block_id: b.id,
-        kind: b.kind,
-        content: b.content,
-        checked: b.kind === "task" ? b.checked : undefined,
+      return (data ?? []).map((n: any) => ({
+        note_id: n.id,
+        title: n.title,
+        body: n.body,
+        open_tasks: (n.body.match(/^\[ \]/gm) ?? []).length,
       }));
     }
 
-    case "upsert_block": {
+    case "upsert_note": {
       const values: Record<string, unknown> = {};
-      if (args?.kind !== undefined) {
-        if (!BLOCK_KINDS.includes(args.kind)) {
-          throw new Error(`kind must be one of: ${BLOCK_KINDS.join(", ")}`);
-        }
-        values.kind = args.kind;
-      }
-      if (typeof args?.content === "string") values.content = args.content.trim();
-      if (typeof args?.checked === "boolean") values.checked = args.checked;
+      if (typeof args?.title === "string") values.title = args.title.trim();
+      if (typeof args?.body === "string") values.body = args.body.trim();
 
-      if (args?.block_id) {
+      if (args?.note_id) {
+        if (!Object.keys(values).length) throw new Error("No fields to update.");
         const { error } = await supabase
-          .from("coach_blocks")
+          .from("coach_notes")
           .update({ ...values, updated_at: new Date().toISOString() })
-          .eq("id", str(args.block_id));
+          .eq("id", str(args.note_id));
         if (error) throw new Error(error.message);
-        const lead = String(values.content ?? "").split("\n")[0];
         await log(
           supabase,
-          "upsert_block",
-          values.checked === true
-            ? `Checked off: ${lead || str(args.block_id)}`
-            : `Updated block${lead ? `: ${lead}` : ""}`
+          "upsert_note",
+          `Updated section${values.title ? `: ${values.title}` : ""}`
         );
-        return { ok: true, block_id: args.block_id };
+        return { ok: true, note_id: args.note_id };
       }
 
-      if (!values.content) throw new Error("content is required to create a block.");
-      // Position: after the given block (midpoint to its successor), else append.
+      if (!values.title && !values.body) {
+        throw new Error("title or body is required to create a section.");
+      }
+      // Position: after the given note (midpoint to its successor), else append.
       const { data: ordered } = await supabase
-        .from("coach_blocks")
+        .from("coach_notes")
         .select("id, sort_order")
         .order("sort_order", { ascending: true })
         .order("created_at", { ascending: true });
       const all = ordered ?? [];
       let sort_order = (all[all.length - 1]?.sort_order ?? 0) + 1;
-      const afterId = str(args?.after_block_id);
+      const afterId = str(args?.after_note_id);
       if (afterId) {
-        const i = all.findIndex((b: any) => b.id === afterId);
-        if (i === -1) throw new Error("after_block_id does not match a block — check list_blocks.");
+        const i = all.findIndex((n: any) => n.id === afterId);
+        if (i === -1) throw new Error("after_note_id does not match a section — check list_notes.");
         sort_order =
           i + 1 < all.length
             ? (all[i].sort_order + all[i + 1].sort_order) / 2
             : all[i].sort_order + 1;
       }
       const { data, error } = await supabase
-        .from("coach_blocks")
-        .insert({ kind: values.kind ?? "text", content: values.content, checked: values.checked ?? false, sort_order })
+        .from("coach_notes")
+        .insert({ title: values.title ?? "", body: values.body ?? "", sort_order })
         .select("id")
         .single();
       if (error) throw new Error(error.message);
-      const lead = String(values.content).split("\n")[0];
-      await log(supabase, "upsert_block", `New ${values.kind ?? "text"} block: ${lead}`);
-      return { ok: true, block_id: data.id };
+      await log(supabase, "upsert_note", `New section: ${values.title || "(untitled)"}`);
+      return { ok: true, note_id: data.id };
     }
 
-    case "delete_block": {
+    case "delete_note": {
       const { error } = await supabase
-        .from("coach_blocks")
+        .from("coach_notes")
         .delete()
-        .eq("id", str(args?.block_id));
+        .eq("id", str(args?.note_id));
       if (error) throw new Error(error.message);
       return { ok: true };
     }
@@ -721,7 +715,7 @@ async function callTool(name: string, args: any): Promise<unknown> {
         .single();
       if (error) throw new Error(error.message);
       await log(supabase, "upsert_timeline_event", `Timeline: added ${company} — ${str(args?.program)}`);
-      return { ok: true, event_id: data.id, view_url: "/timeline" };
+      return { ok: true, event_id: data.id, view_url: "/applications" };
     }
 
     case "delete_timeline_event": {

@@ -23,22 +23,22 @@ where you view and print them.
 5. **Track** — statuses flow saved → applied → interviewing → offer /
    rejected / withdrawn. The dashboard groups jobs, flags upcoming
    deadlines, and shows an activity feed of what Claude did.
-6. **Timeline** — `/timeline` shows when each company's application window
-   opens (grouped by month, "Open now" highlighting) so you apply in week
-   one. The app is just the UI: ask your agentic tool of choice (Claude
-   Code, Codex CLI, ...) to research companies' hiring cycles and import
-   events via MCP (`upsert_timeline_event`). One click promotes a timeline
-   event into a tracked job.
+6. **Applications** — `/applications` gathers everything job-application
+   related: the pipeline stats, upcoming deadlines, tracked jobs grouped by
+   status, and the application timeline (when each company's window opens,
+   grouped by month with "Open now" highlighting — renamed from /timeline,
+   which redirects). Ask your agentic tool of choice to research companies'
+   hiring cycles and import events via MCP (`upsert_timeline_event`). One
+   click promotes a timeline event into a tracked job.
 7. **Career coach** — three pillars beyond documents: a **career narrative**
    (hidden, MCP-only coach memory — no UI; connected AIs load it via
    `get_career_narrative` before any career question, run a first-time
    guided interview when it's empty, and merge refinements back after every
    meaningful conversation, so the picture progresses over time and carries
-   across AI tools), a **Notes & actions block document** on the dashboard
-   (Notion-lite: text notes and checkable tasks interleave; Enter splits
-   blocks, Shift+Enter adds lines, "[] " converts to a task, long notes
-   collapse to fading previews — AI-composed via `upsert_block`, checked
-   off by the user), and
+   across AI tools), **Notes & actions sections** on the dashboard (each a
+   bold title + free-text body where lines typed as "[] task" become
+   checkable to-dos and "[x]" renders done; long bodies collapse to fading
+   previews — AI-composed via `upsert_note`, checked off by the user), and
    **industry briefings** (doc type `briefing`: AI-curated news written at
    the comprehension level recorded in the narrative). The MCP `initialize`
    instructions + tool descriptions + a cross-nudge in `get_profile` teach
@@ -80,7 +80,7 @@ same server (`src/lib/mcp-server.ts`):
   may be limited). The URL is the secret — treat it like a password.
 
 MCP tools: `get_career_narrative`, `update_career_narrative`,
-`list_blocks`, `upsert_block`, `delete_block`,
+`list_notes`, `upsert_note`, `delete_note`,
 `get_profile`, `update_profile`, `upsert_profile_entry`,
 `delete_profile_entry`, `list_jobs`, `get_job`, `add_job`, `update_job`,
 `list_timeline`, `upsert_timeline_event`, `delete_timeline_event`,

@@ -126,13 +126,10 @@ export interface CareerNarrative {
   updated_at: string;
 }
 
-export type BlockKind = "text" | "task";
-
-export interface CoachBlock {
+export interface CoachNote {
   id: string;
-  kind: BlockKind;
-  content: string;
-  checked: boolean;
+  title: string;
+  body: string; // multiline; "[ ] task" / "[x] done" lines render as checkboxes
   sort_order: number;
   created_at: string;
   updated_at: string;

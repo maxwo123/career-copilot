@@ -96,19 +96,15 @@ export async function deleteJob(jobId: string) {
 
 // ------------------------------------------------- career coach (home) ----
 
-export async function createBlock(values: {
-  kind: "text" | "task";
-  content: string;
+export async function createNote(values: {
+  title: string;
+  body: string;
   sort_order: number;
 }): Promise<{ id?: string; error?: string }> {
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("coach_blocks")
-    .insert({
-      kind: values.kind,
-      content: values.content,
-      sort_order: values.sort_order,
-    })
+    .from("coach_notes")
+    .insert(values)
     .select("id")
     .single();
   if (error) return { error: error.message };
@@ -116,26 +112,26 @@ export async function createBlock(values: {
   return { id: data.id };
 }
 
-export async function updateBlock(
-  blockId: string,
-  patch: Partial<{ kind: "text" | "task"; content: string; checked: boolean }>
+export async function updateNote(
+  noteId: string,
+  patch: Partial<{ title: string; body: string }>
 ): Promise<{ error?: string }> {
   const supabase = await createClient();
   const { error } = await supabase
-    .from("coach_blocks")
+    .from("coach_notes")
     .update({ ...patch, updated_at: new Date().toISOString() })
-    .eq("id", blockId);
+    .eq("id", noteId);
   if (error) return { error: error.message };
   revalidatePath("/");
   return {};
 }
 
-export async function deleteBlock(blockId: string): Promise<{ error?: string }> {
+export async function deleteNote(noteId: string): Promise<{ error?: string }> {
   const supabase = await createClient();
   const { error } = await supabase
-    .from("coach_blocks")
+    .from("coach_notes")
     .delete()
-    .eq("id", blockId);
+    .eq("id", noteId);
   if (error) return { error: error.message };
   revalidatePath("/");
   return {};
@@ -161,7 +157,7 @@ export async function addTimelineEvent(formData: FormData) {
   });
   if (error) throw new Error(error.message);
   await logActivity(supabase, "add_timeline_event", `Timeline: added ${company}`);
-  revalidatePath("/timeline");
+  revalidatePath("/applications");
 }
 
 export async function deleteTimelineEvent(eventId: string) {
@@ -171,7 +167,7 @@ export async function deleteTimelineEvent(eventId: string) {
     .delete()
     .eq("id", eventId);
   if (error) throw new Error(error.message);
-  revalidatePath("/timeline");
+  revalidatePath("/applications");
 }
 
 // Promote a timeline event into a tracked job (status "saved") and link it.
@@ -209,7 +205,7 @@ export async function trackTimelineEvent(eventId: string) {
     `Timeline → tracker: ${eventRow.program || "Internship"} @ ${eventRow.company}`,
     job.id
   );
-  revalidatePath("/timeline");
+  revalidatePath("/applications");
   revalidatePath("/");
   redirect(`/jobs/${job.id}`);
 }

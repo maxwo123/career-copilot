@@ -51,10 +51,10 @@ export default async function JobPage({
       {/* Header */}
       <div>
         <Link
-          href="/"
+          href="/applications"
           className="text-xs font-medium text-stone-400 transition-colors hover:text-stone-600"
         >
-          ← Dashboard
+          ← Applications
         </Link>
         <div className="mt-2 flex items-start justify-between gap-4">
           <div className="min-w-0">
