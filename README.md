@@ -34,8 +34,11 @@ where you view and print them.
    `get_career_narrative` before any career question, run a first-time
    guided interview when it's empty, and merge refinements back after every
    meaningful conversation, so the picture progresses over time and carries
-   across AI tools), **action items** on the dashboard (learn X, read Y,
-   apply to Z — AI-assigned via MCP, checked off by the user), and
+   across AI tools), a **Notes & actions block document** on the dashboard
+   (Notion-lite: text notes and checkable tasks interleave; Enter splits
+   blocks, Shift+Enter adds lines, "[] " converts to a task, long notes
+   collapse to fading previews — AI-composed via `upsert_block`, checked
+   off by the user), and
    **industry briefings** (doc type `briefing`: AI-curated news written at
    the comprehension level recorded in the narrative). The MCP `initialize`
    instructions + tool descriptions + a cross-nudge in `get_profile` teach
@@ -77,7 +80,7 @@ same server (`src/lib/mcp-server.ts`):
   may be limited). The URL is the secret — treat it like a password.
 
 MCP tools: `get_career_narrative`, `update_career_narrative`,
-`list_action_items`, `upsert_action_item`, `delete_action_item`,
+`list_blocks`, `upsert_block`, `delete_block`,
 `get_profile`, `update_profile`, `upsert_profile_entry`,
 `delete_profile_entry`, `list_jobs`, `get_job`, `add_job`, `update_job`,
 `list_timeline`, `upsert_timeline_event`, `delete_timeline_event`,

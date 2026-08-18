@@ -126,37 +126,16 @@ export interface CareerNarrative {
   updated_at: string;
 }
 
-export type ActionCategory = "skill" | "knowledge" | "apply" | "document" | "other";
-export type ActionStatus = "open" | "done" | "dismissed";
+export type BlockKind = "text" | "task";
 
-export const ACTION_CATEGORIES: ActionCategory[] = [
-  "skill",
-  "knowledge",
-  "apply",
-  "document",
-  "other",
-];
-
-export const ACTION_CATEGORY_LABELS: Record<ActionCategory, string> = {
-  skill: "Skill",
-  knowledge: "Knowledge",
-  apply: "Apply",
-  document: "Document",
-  other: "To-do",
-};
-
-export interface ActionItem {
+export interface CoachBlock {
   id: string;
-  title: string;
-  detail: string;
-  category: ActionCategory;
-  status: ActionStatus;
-  due_on: string | null;
-  url: string;
-  source: "user" | "claude";
+  kind: BlockKind;
+  content: string;
+  checked: boolean;
   sort_order: number;
   created_at: string;
-  completed_at: string | null;
+  updated_at: string;
 }
 
 export interface TimelineEvent {

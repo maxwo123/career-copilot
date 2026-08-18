@@ -96,20 +96,49 @@ export async function deleteJob(jobId: string) {
 
 // ------------------------------------------------- career coach (home) ----
 
-export async function setActionItemStatus(
-  actionId: string,
-  status: "open" | "done" | "dismissed"
-) {
+export async function createBlock(values: {
+  kind: "text" | "task";
+  content: string;
+  sort_order: number;
+}): Promise<{ id?: string; error?: string }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("coach_blocks")
+    .insert({
+      kind: values.kind,
+      content: values.content,
+      sort_order: values.sort_order,
+    })
+    .select("id")
+    .single();
+  if (error) return { error: error.message };
+  revalidatePath("/");
+  return { id: data.id };
+}
+
+export async function updateBlock(
+  blockId: string,
+  patch: Partial<{ kind: "text" | "task"; content: string; checked: boolean }>
+): Promise<{ error?: string }> {
   const supabase = await createClient();
   const { error } = await supabase
-    .from("action_items")
-    .update({
-      status,
-      completed_at: status === "done" ? new Date().toISOString() : null,
-    })
-    .eq("id", actionId);
-  if (error) throw new Error(error.message);
+    .from("coach_blocks")
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq("id", blockId);
+  if (error) return { error: error.message };
   revalidatePath("/");
+  return {};
+}
+
+export async function deleteBlock(blockId: string): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("coach_blocks")
+    .delete()
+    .eq("id", blockId);
+  if (error) return { error: error.message };
+  revalidatePath("/");
+  return {};
 }
 
 // ------------------------------------------------------------ timeline ----

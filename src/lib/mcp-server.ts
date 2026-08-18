@@ -19,21 +19,21 @@ const PROTOCOL_VERSION = "2025-03-26";
 const JOB_STATUSES = ["saved", "applied", "interviewing", "offer", "rejected", "withdrawn"];
 const SECTIONS = ["education", "experience", "projects", "leadership", "skills", "certifications", "other"];
 const DOC_TYPES = ["resume", "cover_letter", "interview_prep", "match_analysis", "briefing", "other"];
-const ACTION_CATEGORIES = ["skill", "knowledge", "apply", "document", "other"];
-const ACTION_STATUSES = ["open", "done", "dismissed"];
+const BLOCK_KINDS = ["text", "task"];
 
 const SERVER_INSTRUCTIONS = `You are the intelligence layer for this career-growth app; the app itself has no AI. The app keeps a hidden "career narrative" — behind-the-scenes coach memory about the candidate (where they started, where they are now, where they're headed, interests, constraints, gaps, coach notes). It is NOT visible anywhere in the app's UI: connected AI tools like you are its only readers and writers, and it is how coaching context survives across sessions and across different AI tools.
 
 Session protocol:
 1. LOAD CONTEXT FIRST: call get_career_narrative before answering any career question. It returns the coach memory plus pending work (open action items, briefing staleness).
-2. FIRST TIME (it returns first_time: true): the candidate has no coach memory yet. Proactively suggest a short guided interview — the response includes the question guide. Ask ONE question at a time, conversationally; after the interview, save the picture with update_career_narrative and propose 3–5 starter action items via upsert_action_item. Tell the candidate this builds a private career memory that makes every future conversation (in any AI tool) smarter.
+2. FIRST TIME (it returns first_time: true): the candidate has no coach memory yet. Proactively suggest a short guided interview — the response includes the question guide. Ask ONE question at a time, conversationally; after the interview, save the picture with update_career_narrative and seed the dashboard document with a short intro note plus 3–5 task blocks via upsert_block. Tell the candidate this builds a private career memory that makes every future conversation (in any AI tool) smarter.
 3. RETURNING: the memory should progress over time. Whenever a conversation reveals something new — a skill gained, a goal sharpened, a worry, a win — merge it in via update_career_narrative. Refine the existing text (you loaded it in step 1); never wholesale overwrite. Leave coach_notes for the next session.
 4. TRANSPARENCY: if the candidate asks what you know about them, share the narrative content openly — it is their data, just stored out of the UI's way.
-5. Keep the dashboard actionable (upsert_action_item — keep ≤5 open items, prune stale ones), briefings current (save_document doc_type "briefing", vocabulary matched to the level recorded in current_state), and resumes truthful (tailoring selects and rephrases real profile entries, never invents).`;
+5. THE DASHBOARD IS A BLOCK DOCUMENT (Notion-style): text notes and checkable tasks interleave freely via list_blocks / upsert_block / delete_block. Compose it like a coach's whiteboard — a short narrative note introducing a theme, then its task blocks beneath, positioned with after_block_id. Keep it curated: readable in about one screen, ≤6 open tasks, check tasks off as the candidate reports progress, and delete stale blocks. Long notes are fine — the UI collapses them to a fading preview.
+6. Keep briefings current (save_document doc_type "briefing", vocabulary matched to the level recorded in current_state), and resumes truthful (tailoring selects and rephrases real profile entries, never invents).`;
 
 const INTERVIEW_GUIDE = {
   style:
-    "One question at a time, conversational, ~5 minutes total. Follow up naturally; skip questions they've already answered. Afterwards: save with update_career_narrative, then propose 3–5 starter action items.",
+    "One question at a time, conversational, ~5 minutes total. Follow up naturally; skip questions they've already answered. Afterwards: save with update_career_narrative, then seed the dashboard with an intro note plus 3–5 task blocks (upsert_block).",
   questions: [
     { field: "starting_point", ask: "What first got you interested in your field? Where did this all start?" },
     { field: "current_state", ask: "Where are you right now — school year / role, and what skills or experience have you picked up so far?" },
@@ -75,41 +75,37 @@ const TOOLS: ToolDef[] = [
     },
   },
   {
-    name: "list_action_items",
+    name: "list_blocks",
     description:
-      "Action items shown on the candidate's dashboard (learn X, read Y, apply to Z). Defaults to open items.",
+      "The dashboard 'Notes & actions' document: an ordered list of blocks where 'text' notes and checkable 'task' blocks interleave, Notion-style. Read it before editing so you place new blocks sensibly and avoid duplicates.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "upsert_block",
+    description:
+      "Add a block to the dashboard document, or update one when block_id is given (e.g. checked: true when the candidate reports progress). Compose intertwined structure: a short text note introducing a theme, then its task blocks placed with after_block_id. Content is multiline — first line is the lead; put explanation and links on following lines (URLs render as clickable links). Task first lines should be imperative and specific: 'Finish week 2 of Andrew Ng ML course'.",
     inputSchema: {
       type: "object",
       properties: {
-        status: { type: "string", enum: ACTION_STATUSES, description: "Filter; omit for 'open'. Use 'all' for everything.", },
+        block_id: { type: "string", description: "Omit to create a new block" },
+        kind: { type: "string", enum: BLOCK_KINDS, description: "'text' note or checkable 'task'" },
+        content: { type: "string", description: "Multiline; first line is the lead" },
+        checked: { type: "boolean", description: "Tasks only — true marks it done (strikethrough, kept in place)" },
+        after_block_id: {
+          type: "string",
+          description: "Creation only: place the new block right after this block; omit to append at the end",
+        },
       },
     },
   },
   {
-    name: "upsert_action_item",
+    name: "delete_block",
     description:
-      "Add a concrete next step to the candidate's dashboard, or update one when action_id is given (e.g. set status 'done' when they report progress). Keep titles imperative and specific: 'Finish week 2 of Andrew Ng ML course', 'Email Prof. X about joining the lab'.",
+      "Delete a block by id. Use to prune stale or completed clutter and keep the document readable in about one screen.",
     inputSchema: {
       type: "object",
-      properties: {
-        action_id: { type: "string", description: "Omit to create a new item" },
-        title: { type: "string" },
-        detail: { type: "string", description: "Why this matters / how to do it" },
-        category: { type: "string", enum: ACTION_CATEGORIES },
-        status: { type: "string", enum: ACTION_STATUSES },
-        due_on: { type: "string", description: "YYYY-MM-DD" },
-        url: { type: "string", description: "Course, article, posting, or program link" },
-        sort_order: { type: "number" },
-      },
-    },
-  },
-  {
-    name: "delete_action_item",
-    description: "Delete an action item by id (prefer status 'dismissed' to keep history).",
-    inputSchema: {
-      type: "object",
-      properties: { action_id: { type: "string" } },
-      required: ["action_id"],
+      properties: { block_id: { type: "string" } },
+      required: ["block_id"],
     },
   },
   {
@@ -311,9 +307,10 @@ async function callTool(name: string, args: any): Promise<unknown> {
         await Promise.all([
           supabase.from("career_narrative").select("*").maybeSingle(),
           supabase
-            .from("action_items")
+            .from("coach_blocks")
             .select("id", { count: "exact", head: true })
-            .eq("status", "open"),
+            .eq("kind", "task")
+            .eq("checked", false),
           supabase
             .from("documents")
             .select("created_at, title")
@@ -343,7 +340,7 @@ async function callTool(name: string, args: any): Promise<unknown> {
             }
           : null,
         pending_work: {
-          open_action_items: openActions ?? 0,
+          open_tasks: openActions ?? 0,
           latest_briefing: briefing
             ? { title: briefing.title, age_days: briefingAgeDays, stale: (briefingAgeDays ?? 0) > 7 }
             : { note: "No industry briefing yet — consider researching and saving one (doc_type 'briefing')." },
@@ -351,7 +348,7 @@ async function callTool(name: string, args: any): Promise<unknown> {
         ...(empty
           ? {
               next_step:
-                "No coach memory exists yet — this looks like the candidate's first session. Suggest a short guided interview to build their private career memory (it makes every future conversation, in any AI tool, smarter). Then save via update_career_narrative and propose 3–5 starter action items.",
+                "No coach memory exists yet — this looks like the candidate's first session. Suggest a short guided interview to build their private career memory (it makes every future conversation, in any AI tool, smarter). Then save via update_career_narrative and seed the dashboard with an intro note plus 3–5 task blocks (upsert_block).",
               interview_guide: INTERVIEW_GUIDE,
             }
           : {
@@ -385,79 +382,82 @@ async function callTool(name: string, args: any): Promise<unknown> {
       return { ok: true, updated: Object.keys(patch) };
     }
 
-    case "list_action_items": {
-      let q = supabase
-        .from("action_items")
+    case "list_blocks": {
+      const { data } = await supabase
+        .from("coach_blocks")
         .select("*")
         .order("sort_order", { ascending: true })
         .order("created_at", { ascending: true });
-      const status = str(args?.status) || "open";
-      if (status !== "all") q = q.eq("status", status);
-      const { data } = await q;
-      return (data ?? []).map((a: any) => ({
-        action_id: a.id,
-        title: a.title,
-        detail: a.detail,
-        category: a.category,
-        status: a.status,
-        due_on: a.due_on,
-        url: a.url,
-        created_at: a.created_at,
+      return (data ?? []).map((b: any) => ({
+        block_id: b.id,
+        kind: b.kind,
+        content: b.content,
+        checked: b.kind === "task" ? b.checked : undefined,
       }));
     }
 
-    case "upsert_action_item": {
+    case "upsert_block": {
       const values: Record<string, unknown> = {};
-      if (typeof args?.title === "string") values.title = args.title.trim();
-      if (typeof args?.detail === "string") values.detail = args.detail.trim();
-      if (typeof args?.url === "string") values.url = args.url.trim();
-      if (typeof args?.due_on === "string") values.due_on = args.due_on.trim() || null;
-      if (typeof args?.sort_order === "number") values.sort_order = args.sort_order;
-      if (args?.category !== undefined) {
-        if (!ACTION_CATEGORIES.includes(args.category)) {
-          throw new Error(`category must be one of: ${ACTION_CATEGORIES.join(", ")}`);
+      if (args?.kind !== undefined) {
+        if (!BLOCK_KINDS.includes(args.kind)) {
+          throw new Error(`kind must be one of: ${BLOCK_KINDS.join(", ")}`);
         }
-        values.category = args.category;
+        values.kind = args.kind;
       }
-      if (args?.status !== undefined) {
-        if (!ACTION_STATUSES.includes(args.status)) {
-          throw new Error(`status must be one of: ${ACTION_STATUSES.join(", ")}`);
-        }
-        values.status = args.status;
-        values.completed_at = args.status === "done" ? new Date().toISOString() : null;
-      }
+      if (typeof args?.content === "string") values.content = args.content.trim();
+      if (typeof args?.checked === "boolean") values.checked = args.checked;
 
-      if (args?.action_id) {
+      if (args?.block_id) {
         const { error } = await supabase
-          .from("action_items")
-          .update(values)
-          .eq("id", str(args.action_id));
+          .from("coach_blocks")
+          .update({ ...values, updated_at: new Date().toISOString() })
+          .eq("id", str(args.block_id));
         if (error) throw new Error(error.message);
+        const lead = String(values.content ?? "").split("\n")[0];
         await log(
           supabase,
-          "upsert_action_item",
-          values.status === "done"
-            ? `Action item done: ${str(args?.title) || str(args.action_id)}`
-            : `Updated action item${values.title ? `: ${values.title}` : ""}`
+          "upsert_block",
+          values.checked === true
+            ? `Checked off: ${lead || str(args.block_id)}`
+            : `Updated block${lead ? `: ${lead}` : ""}`
         );
-        return { ok: true, action_id: args.action_id };
+        return { ok: true, block_id: args.block_id };
       }
-      if (!values.title) throw new Error("title is required to create an action item.");
+
+      if (!values.content) throw new Error("content is required to create a block.");
+      // Position: after the given block (midpoint to its successor), else append.
+      const { data: ordered } = await supabase
+        .from("coach_blocks")
+        .select("id, sort_order")
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: true });
+      const all = ordered ?? [];
+      let sort_order = (all[all.length - 1]?.sort_order ?? 0) + 1;
+      const afterId = str(args?.after_block_id);
+      if (afterId) {
+        const i = all.findIndex((b: any) => b.id === afterId);
+        if (i === -1) throw new Error("after_block_id does not match a block — check list_blocks.");
+        sort_order =
+          i + 1 < all.length
+            ? (all[i].sort_order + all[i + 1].sort_order) / 2
+            : all[i].sort_order + 1;
+      }
       const { data, error } = await supabase
-        .from("action_items")
-        .insert({ ...values, source: "claude" })
+        .from("coach_blocks")
+        .insert({ kind: values.kind ?? "text", content: values.content, checked: values.checked ?? false, sort_order })
         .select("id")
         .single();
       if (error) throw new Error(error.message);
-      await log(supabase, "upsert_action_item", `New action item: ${values.title}`);
-      return { ok: true, action_id: data.id };
+      const lead = String(values.content).split("\n")[0];
+      await log(supabase, "upsert_block", `New ${values.kind ?? "text"} block: ${lead}`);
+      return { ok: true, block_id: data.id };
     }
 
-    case "delete_action_item": {
+    case "delete_block": {
       const { error } = await supabase
-        .from("action_items")
+        .from("coach_blocks")
         .delete()
-        .eq("id", str(args?.action_id));
+        .eq("id", str(args?.block_id));
       if (error) throw new Error(error.message);
       return { ok: true };
     }

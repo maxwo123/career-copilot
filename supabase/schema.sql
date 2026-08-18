@@ -74,20 +74,16 @@ create table if not exists career_narrative (
   updated_at timestamptz not null default now()
 );
 
--- Coach-assigned next steps shown on the dashboard: learn X, read Y, apply to Z.
-create table if not exists action_items (
+-- Notion-lite blocks: the dashboard "Notes & actions" document, where text
+-- notes and checkable tasks interleave freely (AI-composed via MCP).
+create table if not exists coach_blocks (
   id uuid primary key default gen_random_uuid(),
-  title text not null,
-  detail text not null default '',
-  category text not null default 'other' check (category in
-    ('skill', 'knowledge', 'apply', 'document', 'other')),
-  status text not null default 'open' check (status in ('open', 'done', 'dismissed')),
-  due_on date,
-  url text not null default '',
-  source text not null default 'claude' check (source in ('user', 'claude')),
-  sort_order int not null default 0,
+  kind text not null default 'text' check (kind in ('text', 'task')),
+  content text not null default '',  -- multiline; first line reads as the block's lead
+  checked boolean not null default false, -- tasks only
+  sort_order double precision not null default 0, -- float so inserts land between neighbors
   created_at timestamptz not null default now(),
-  completed_at timestamptz
+  updated_at timestamptz not null default now()
 );
 
 -- Application timelines: when companies' internship/job postings open, so the
@@ -124,12 +120,12 @@ alter table documents enable row level security;
 alter table activity enable row level security;
 alter table timeline_events enable row level security;
 alter table career_narrative enable row level security;
-alter table action_items enable row level security;
+alter table coach_blocks enable row level security;
 
 do $$
 declare t text;
 begin
-  foreach t in array array['profile', 'profile_entries', 'jobs', 'documents', 'activity', 'timeline_events', 'career_narrative', 'action_items'] loop
+  foreach t in array array['profile', 'profile_entries', 'jobs', 'documents', 'activity', 'timeline_events', 'career_narrative', 'coach_blocks'] loop
     execute format('create policy "auth full access" on %I for all to authenticated using (true) with check (true)', t);
   end loop;
 end $$;
