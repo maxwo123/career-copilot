@@ -99,6 +99,7 @@ export async function deleteJob(jobId: string) {
 export async function createNote(values: {
   title: string;
   body: string;
+  scheduled_for: string | null;
   sort_order: number;
 }): Promise<{ id?: string; error?: string }> {
   const supabase = await createClient();
@@ -114,7 +115,7 @@ export async function createNote(values: {
 
 export async function updateNote(
   noteId: string,
-  patch: Partial<{ title: string; body: string }>
+  patch: Partial<{ title: string; body: string; scheduled_for: string | null }>
 ): Promise<{ error?: string }> {
   const supabase = await createClient();
   const { error } = await supabase

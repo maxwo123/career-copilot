@@ -35,10 +35,13 @@ where you view and print them.
    `get_career_narrative` before any career question, run a first-time
    guided interview when it's empty, and merge refinements back after every
    meaningful conversation, so the picture progresses over time and carries
-   across AI tools), **Notes & actions sections** on the dashboard (each a
-   bold title + free-text body where lines typed as "[] task" become
-   checkable to-dos and "[x]" renders done; long bodies collapse to fading
-   previews — AI-composed via `upsert_note`, checked off by the user), and
+   across AI tools), **Notes & actions** on the dashboard — a month-grouped
+   timeline (same rail UI as the application timeline) of action-item cards:
+   bold title on its own line, then a text-editor body mixing explanations,
+   hyperlinks, and "[] task" checkbox lines; cards are collapsed by default
+   (title + to-do count + faded preview) and expand to full height —
+   AI-composed via `upsert_note` (with a target `month`), checked off by
+   the user — and
    **industry briefings** (doc type `briefing`: AI-curated news written at
    the comprehension level recorded in the narrative). The MCP `initialize`
    instructions + tool descriptions + a cross-nudge in `get_profile` teach

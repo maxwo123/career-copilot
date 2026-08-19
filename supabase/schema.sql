@@ -81,6 +81,7 @@ create table if not exists coach_notes (
   id uuid primary key default gen_random_uuid(),
   title text not null default '',
   body text not null default '',  -- multiline; "[ ] task" / "[x] done" lines are checkboxes
+  scheduled_for date,             -- target month (first of month); null groups under "Someday"
   sort_order double precision not null default 0, -- float so inserts land between neighbors
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

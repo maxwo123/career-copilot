@@ -130,6 +130,7 @@ export interface CoachNote {
   id: string;
   title: string;
   body: string; // multiline; "[ ] task" / "[x] done" lines render as checkboxes
+  scheduled_for: string | null; // target month (first of month); null = "Someday"
   sort_order: number;
   created_at: string;
   updated_at: string;

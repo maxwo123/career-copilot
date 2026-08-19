@@ -27,7 +27,7 @@ Session protocol:
 2. FIRST TIME (it returns first_time: true): the candidate has no coach memory yet. Proactively suggest a short guided interview — the response includes the question guide. Ask ONE question at a time, conversationally; after the interview, save the picture with update_career_narrative and seed the dashboard with 2–4 sections via upsert_note, each with a few "[ ] task" lines. Tell the candidate this builds a private career memory that makes every future conversation (in any AI tool) smarter.
 3. RETURNING: the memory should progress over time. Whenever a conversation reveals something new — a skill gained, a goal sharpened, a worry, a win — merge it in via update_career_narrative. Refine the existing text (you loaded it in step 1); never wholesale overwrite. Leave coach_notes for the next session.
 4. TRANSPARENCY: if the candidate asks what you know about them, share the narrative content openly — it is their data, just stored out of the UI's way.
-5. THE DASHBOARD IS A LIST OF SECTIONS (list_notes / upsert_note / delete_note): each section has a bold title and a free-text body where lines written as "[ ] task" render as checkable to-dos and "[x] task" as done. Compose it like a coach's whiteboard — one section per theme (e.g. "Start an ML fundamentals course"), body mixing short explanation, links, and to-do lines. Keep it curated: a handful of sections, ≤6 unchecked "[ ]" lines total, mark lines "[x]" as the candidate reports progress, delete stale sections. Long bodies are fine — the UI collapses them to a fading preview.
+5. THE DASHBOARD IS A MONTH-GROUPED TIMELINE OF ACTION ITEMS (list_notes / upsert_note / delete_note): each item has a bold title, a target month (rendered as timeline headers — schedule work across months, don't dump everything into one), and a free-text body where lines written as "[ ] task" render as checkable to-dos and "[x] task" as done. Compose each body like a document: short explanation, why it matters, links to resources, then the to-do lines. Keep it curated: a handful of items per month, mark lines "[x]" as the candidate reports progress, delete stale items. Long bodies are fine — cards are collapsed by default and expand to full height.
 6. Keep briefings current (save_document doc_type "briefing", vocabulary matched to the level recorded in current_state), and resumes truthful (tailoring selects and rephrases real profile entries, never invents).`;
 
 const INTERVIEW_GUIDE = {
@@ -76,26 +76,31 @@ const TOOLS: ToolDef[] = [
   {
     name: "list_notes",
     description:
-      "The dashboard 'Notes & actions' sections: each has a bold title and a free-text body where lines '[ ] task' are open to-dos and '[x] task' are done. Read before editing so you update the right section instead of duplicating it.",
+      "The dashboard action items, a month-grouped timeline: each has a bold title, a target month, and a free-text body where lines '[ ] task' are open to-dos and '[x] task' are done. Read before editing so you update the right item instead of duplicating it.",
     inputSchema: { type: "object", properties: {} },
   },
   {
     name: "upsert_note",
     description:
-      "Add a dashboard section, or update one when note_id is given. One section per theme — title short and specific ('Start an ML fundamentals course'), body mixing brief explanation, links (URLs render clickable), and to-do lines written as '[ ] task'. To check a to-do off after the candidate reports progress, resend the body with that line as '[x] task'. Only provided fields change.",
+      "Add a dashboard action item, or update one when note_id is given. One item per theme — title short and specific ('Start an ML fundamentals course'), month chosen deliberately (spread work across months rather than piling into one), body composed like a document: brief explanation and why it matters, links to resources (URLs render clickable), then to-do lines written as '[ ] task'. To check a to-do off after the candidate reports progress, resend the body with that line as '[x] task'. Only provided fields change.",
     inputSchema: {
       type: "object",
       properties: {
-        note_id: { type: "string", description: "Omit to create a new section" },
-        title: { type: "string", description: "Bold section title" },
+        note_id: { type: "string", description: "Omit to create a new action item" },
+        title: { type: "string", description: "Bold title, its own line" },
         body: {
           type: "string",
           description:
             "Multiline free text; '[ ] task' lines render as checkboxes, '[x] task' as checked",
         },
+        month: {
+          type: "string",
+          description:
+            'Target month "YYYY-MM" — the timeline header this item appears under. Empty string moves it to "Someday".',
+        },
         after_note_id: {
           type: "string",
-          description: "Creation only: place the new section right after this one; omit to append at the end",
+          description: "Creation only: place the new item right after this one within its month; omit to append",
         },
       },
     },
@@ -392,6 +397,7 @@ async function callTool(name: string, args: any): Promise<unknown> {
       return (data ?? []).map((n: any) => ({
         note_id: n.id,
         title: n.title,
+        month: n.scheduled_for ? n.scheduled_for.slice(0, 7) : "",
         body: n.body,
         open_tasks: (n.body.match(/^\[ \]/gm) ?? []).length,
       }));
@@ -401,6 +407,13 @@ async function callTool(name: string, args: any): Promise<unknown> {
       const values: Record<string, unknown> = {};
       if (typeof args?.title === "string") values.title = args.title.trim();
       if (typeof args?.body === "string") values.body = args.body.trim();
+      if (typeof args?.month === "string") {
+        const month = args.month.trim();
+        if (month && !/^\d{4}-\d{2}$/.test(month)) {
+          throw new Error('month must be "YYYY-MM" (or empty for "Someday").');
+        }
+        values.scheduled_for = month ? `${month}-01` : null;
+      }
 
       if (args?.note_id) {
         if (!Object.keys(values).length) throw new Error("No fields to update.");
@@ -439,7 +452,16 @@ async function callTool(name: string, args: any): Promise<unknown> {
       }
       const { data, error } = await supabase
         .from("coach_notes")
-        .insert({ title: values.title ?? "", body: values.body ?? "", sort_order })
+        .insert({
+          title: values.title ?? "",
+          body: values.body ?? "",
+          // Default new items to the current month unless a month was given.
+          scheduled_for:
+            "scheduled_for" in values
+              ? values.scheduled_for
+              : `${new Date().toISOString().slice(0, 7)}-01`,
+          sort_order,
+        })
         .select("id")
         .single();
       if (error) throw new Error(error.message);

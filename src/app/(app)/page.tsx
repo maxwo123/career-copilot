@@ -10,7 +10,7 @@ export default async function Dashboard() {
   const [{ data: noteRows }, { data: activityRows }] = await Promise.all([
     supabase
       .from("coach_notes")
-      .select("id, title, body, sort_order")
+      .select("id, title, body, scheduled_for, sort_order")
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true }),
     supabase

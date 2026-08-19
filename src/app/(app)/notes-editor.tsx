@@ -5,17 +5,19 @@ import { createNote, deleteNote, updateNote } from "@/app/actions";
 import type { CoachNote } from "@/lib/types";
 import { Card, cn } from "@/lib/ui";
 
-// Notes & actions: titled sections in the application-timeline card format.
-// Title = dark bold text; below it a free-text body where lines typed as
-// "[] task" (or "[ ] task") become checkable to-dos and "[x] done" renders
-// checked. Long bodies collapse to a fading preview behind a triangle.
+// Notes & actions as a month-grouped timeline (same rail UI as the
+// application timeline). Each card: bold title on its own line; underneath,
+// AI-generated content behaving like a basic text editor — free text,
+// hyperlinks, and "[ ] task" checkbox lines. Cards are collapsed by default
+// (title + to-do count + faded two-line preview) and expand to full height.
 
-type Note = Pick<CoachNote, "id" | "title" | "body" | "sort_order">;
+type Note = Pick<
+  CoachNote,
+  "id" | "title" | "body" | "scheduled_for" | "sort_order"
+>;
 
 const CHECKBOX_RE = /^\[( |x)\]\s?(.*)$/;
 const URL_RE = /(https?:\/\/[^\s<>()]+[^\s<>().,;:!?'"])/g;
-const LONG_LINES = 6;
-const LONG_CHARS = 380;
 
 // Normalize the "[] " typing shortcut to canonical "[ ] " on save.
 function normalizeBody(body: string): string {
@@ -25,8 +27,21 @@ function normalizeBody(body: string): string {
     .join("\n");
 }
 
-function isLong(body: string): boolean {
-  return body.length > LONG_CHARS || body.split("\n").length > LONG_LINES;
+function monthOf(note: Note): string {
+  return note.scheduled_for ? note.scheduled_for.slice(0, 7) : "";
+}
+
+function monthLabel(month: string): string {
+  if (!month) return "Someday";
+  const d = new Date(`${month}-01T00:00:00`);
+  return d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+}
+
+function taskCounts(body: string): { open: number; done: number } {
+  return {
+    open: (body.match(/^\[ \]/gm) ?? []).length,
+    done: (body.match(/^\[x\]/gm) ?? []).length,
+  };
 }
 
 function Linkified({ text }: { text: string }) {
@@ -58,10 +73,11 @@ let tmpCounter = 0;
 export function NotesEditor({ initialNotes }: { initialNotes: Note[] }) {
   const [notes, setNotes] = useState<Note[]>(initialNotes);
   const [editing, setEditing] = useState<{ id: string; field: "title" | "body" } | null>(null);
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [expanded, setExpanded] = useState<Set<string>>(new Set()); // collapsed by default
   const [, startTransition] = useTransition();
   const fieldRef = useRef<HTMLTextAreaElement | HTMLInputElement | null>(null);
   const idMap = useRef(new Map<string, Promise<string>>());
+  const currentMonth = new Date().toISOString().slice(0, 7);
 
   useEffect(() => {
     const el = fieldRef.current;
@@ -77,7 +93,10 @@ export function NotesEditor({ initialNotes }: { initialNotes: Note[] }) {
 
   const realId = async (id: string) => (await idMap.current.get(id)) ?? id;
 
-  const persist = (id: string, patch: Partial<{ title: string; body: string }>) =>
+  const persist = (
+    id: string,
+    patch: Partial<{ title: string; body: string; scheduled_for: string | null }>
+  ) =>
     startTransition(async () => {
       await updateNote(await realId(id), patch);
     });
@@ -85,18 +104,31 @@ export function NotesEditor({ initialNotes }: { initialNotes: Note[] }) {
   const setNote = (id: string, patch: Partial<Note>) =>
     setNotes((n) => n.map((x) => (x.id === id ? { ...x, ...patch } : x)));
 
-  const addSection = () => {
+  const toggleExpanded = (id: string) =>
+    setExpanded((s) => {
+      const next = new Set(s);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const addNote = () => {
     const tempId = `tmp-${++tmpCounter}`;
-    const sort_order = (notes[notes.length - 1]?.sort_order ?? 0) + 1;
-    setNotes((n) => [...n, { id: tempId, title: "", body: "", sort_order }]);
+    const scheduled_for = `${currentMonth}-01`;
+    const sort_order =
+      Math.max(0, ...notes.map((n) => n.sort_order)) + 1;
+    setNotes((n) => [...n, { id: tempId, title: "", body: "", scheduled_for, sort_order }]);
     idMap.current.set(
       tempId,
-      createNote({ title: "", body: "", sort_order }).then((res) => res.id ?? tempId)
+      createNote({ title: "", body: "", scheduled_for, sort_order }).then(
+        (res) => res.id ?? tempId
+      )
     );
+    setExpanded((s) => new Set(s).add(tempId));
     setEditing({ id: tempId, field: "title" });
   };
 
-  const removeSection = (id: string) => {
+  const removeNote = (id: string) => {
     setNotes((n) => n.filter((x) => x.id !== id));
     startTransition(async () => {
       await deleteNote(await realId(id));
@@ -124,177 +156,275 @@ export function NotesEditor({ initialNotes }: { initialNotes: Note[] }) {
     persist(note.id, { body });
   };
 
+  const setMonth = (note: Note, month: string) => {
+    const scheduled_for = month ? `${month}-01` : null;
+    setNote(note.id, { scheduled_for });
+    persist(note.id, { scheduled_for });
+  };
+
+  // Group into ordered month buckets; "Someday" (undated) last.
+  const sorted = [...notes].sort((a, b) => {
+    const ma = monthOf(a) || "9999-12";
+    const mb = monthOf(b) || "9999-12";
+    if (ma !== mb) return ma < mb ? -1 : 1;
+    return a.sort_order - b.sort_order;
+  });
+  const groups: { month: string; notes: Note[] }[] = [];
+  for (const note of sorted) {
+    const month = monthOf(note);
+    const last = groups[groups.length - 1];
+    if (last && last.month === month) last.notes.push(note);
+    else groups.push({ month, notes: [note] });
+  }
+
   return (
-    <div className="space-y-3">
+    <div>
       {notes.length === 0 && (
         <Card className="border-dashed p-6 text-center text-sm text-stone-400 shadow-none">
-          Nothing here yet — add a section below, or ask your AI what you
+          Nothing here yet — add an action item below, or ask your AI what you
           should be working on.
         </Card>
       )}
-      {notes.map((note) => {
-        const editingTitle = editing?.id === note.id && editing.field === "title";
-        const editingBody = editing?.id === note.id && editing.field === "body";
-        const collapsible = !editingBody && isLong(note.body);
-        const open = expanded.has(note.id);
-        const lines = note.body.split("\n");
-        return (
-          <Card key={note.id} className="group p-4">
-            {/* Title row — dark bold, timeline-card style */}
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex min-w-0 flex-1 items-baseline gap-2">
-                {collapsible && (
-                  <button
-                    onClick={() =>
-                      setExpanded((s) => {
-                        const next = new Set(s);
-                        if (next.has(note.id)) next.delete(note.id);
-                        else next.add(note.id);
-                        return next;
-                      })
-                    }
-                    className={cn(
-                      "w-3 shrink-0 self-center text-center text-[10px] text-stone-400 transition-transform hover:text-stone-600",
-                      open && "rotate-90"
-                    )}
-                    title={open ? "Collapse" : "Expand"}
-                  >
-                    ▶
-                  </button>
-                )}
-                {editingTitle ? (
-                  <input
-                    ref={(el) => {
-                      fieldRef.current = el;
-                    }}
-                    value={note.title}
-                    onChange={(e) => setNote(note.id, { title: e.target.value })}
-                    onBlur={() => commit(note, "title")}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        persist(note.id, { title: note.title.trim() });
-                        setEditing({ id: note.id, field: "body" });
-                      }
-                      if (e.key === "Escape") commit(note, "title");
-                    }}
-                    placeholder="Section title..."
-                    className="w-full bg-transparent font-medium text-stone-900 outline-none placeholder:font-normal placeholder:text-stone-300"
-                  />
-                ) : (
-                  <h3
-                    onClick={() => setEditing({ id: note.id, field: "title" })}
-                    className="min-w-0 cursor-text font-medium text-stone-900"
-                  >
-                    {note.title || (
-                      <span className="font-normal text-stone-300">Untitled section</span>
-                    )}
-                  </h3>
-                )}
-              </div>
-              <button
-                onClick={() => removeSection(note.id)}
-                className="shrink-0 rounded p-1 text-xs text-stone-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
-                title="Delete section"
-              >
-                ✕
-              </button>
-            </div>
 
-            {/* Body — free text; "[ ]"/"[x]" lines are checkboxes */}
-            {editingBody ? (
-              <textarea
-                ref={(el) => {
-                  fieldRef.current = el;
-                }}
-                value={note.body}
-                rows={2}
-                onChange={(e) => {
-                  setNote(note.id, { body: e.target.value });
-                  e.target.style.height = "auto";
-                  e.target.style.height = `${e.target.scrollHeight}px`;
-                }}
-                onBlur={() => commit(note, "body")}
-                onKeyDown={(e) => {
-                  if (e.key === "Escape") commit(note, "body");
-                }}
-                placeholder={'Notes... start a line with "[] " to make it a to-do'}
-                className="mt-2 w-full resize-none overflow-hidden bg-transparent text-sm leading-relaxed text-stone-700 outline-none placeholder:text-stone-300"
-              />
-            ) : (
-              <div
-                className={cn(
-                  "mt-2 cursor-text",
-                  collapsible &&
-                    !open &&
-                    "max-h-[6.8rem] overflow-hidden [mask-image:linear-gradient(to_bottom,black_50%,transparent_100%)]"
-                )}
-                onClick={() => {
-                  setExpanded((s) => new Set(s).add(note.id));
-                  setEditing({ id: note.id, field: "body" });
-                }}
-              >
-                {note.body === "" ? (
-                  <p className="text-sm text-stone-300">
-                    Notes... start a line with &quot;[]&nbsp;&quot; to make it a to-do
-                  </p>
-                ) : (
-                  lines.map((line, i) => {
-                    const m = line.match(CHECKBOX_RE);
-                    if (m) {
-                      const checked = m[1] === "x";
-                      return (
-                        <div key={i} className="flex items-start gap-2 py-0.5">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleLine(note, i);
-                            }}
-                            className={cn(
-                              "mt-[3px] flex size-4 shrink-0 items-center justify-center rounded border transition-colors",
-                              checked
-                                ? "border-indigo-600 bg-indigo-600 text-white"
-                                : "border-stone-300 bg-white hover:border-indigo-400"
+      {groups.length > 0 && (
+        <div className="relative space-y-10 before:absolute before:top-1.5 before:bottom-1.5 before:left-[7px] before:w-px before:bg-stone-200">
+          {groups.map((group) => {
+            const isCurrent = group.month === currentMonth;
+            const isPast = group.month !== "" && group.month < currentMonth;
+            return (
+              <section key={group.month || "someday"} className="relative pl-9">
+                <span
+                  className={cn(
+                    "absolute top-0.5 left-0 size-[15px] rounded-full border-[3px] bg-white",
+                    isCurrent
+                      ? "border-indigo-500"
+                      : isPast
+                        ? "border-stone-200"
+                        : "border-stone-300"
+                  )}
+                />
+                <h2
+                  className={cn(
+                    "text-xs font-semibold tracking-wider uppercase",
+                    isPast ? "text-stone-400" : "text-stone-600"
+                  )}
+                >
+                  {monthLabel(group.month)}
+                  {isCurrent && (
+                    <span className="ml-2 font-medium text-indigo-500 normal-case tracking-normal">
+                      · this month
+                    </span>
+                  )}
+                </h2>
+                <div className="mt-3 space-y-3">
+                  {group.notes.map((note) => {
+                    const isOpen = expanded.has(note.id);
+                    const editingTitle = editing?.id === note.id && editing.field === "title";
+                    const editingBody = editing?.id === note.id && editing.field === "body";
+                    const counts = taskCounts(note.body);
+                    const lines = note.body.split("\n");
+                    return (
+                      <Card key={note.id} className="group p-4">
+                        {/* Title row — always bold, own line */}
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex min-w-0 flex-1 items-center gap-2">
+                            <button
+                              onClick={() => toggleExpanded(note.id)}
+                              className={cn(
+                                "w-3 shrink-0 text-center text-[10px] text-stone-400 transition-transform hover:text-stone-600",
+                                isOpen && "rotate-90"
+                              )}
+                              title={isOpen ? "Collapse" : "Expand"}
+                            >
+                              ▶
+                            </button>
+                            {editingTitle ? (
+                              <input
+                                ref={(el) => {
+                                  fieldRef.current = el;
+                                }}
+                                value={note.title}
+                                onChange={(e) => setNote(note.id, { title: e.target.value })}
+                                onBlur={() => commit(note, "title")}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    persist(note.id, { title: note.title.trim() });
+                                    setExpanded((s) => new Set(s).add(note.id));
+                                    setEditing({ id: note.id, field: "body" });
+                                  }
+                                  if (e.key === "Escape") commit(note, "title");
+                                }}
+                                placeholder="Action item title..."
+                                className="w-full bg-transparent font-semibold text-stone-900 outline-none placeholder:font-normal placeholder:text-stone-300"
+                              />
+                            ) : (
+                              <h3
+                                onClick={() =>
+                                  isOpen
+                                    ? setEditing({ id: note.id, field: "title" })
+                                    : toggleExpanded(note.id)
+                                }
+                                className="min-w-0 cursor-pointer truncate font-semibold text-stone-900"
+                                title={isOpen ? "Click to rename" : "Click to expand"}
+                              >
+                                {note.title || (
+                                  <span className="font-normal text-stone-300">
+                                    Untitled action item
+                                  </span>
+                                )}
+                              </h3>
                             )}
-                            title={checked ? "Uncheck" : "Mark done"}
-                          >
-                            {checked && (
-                              <span className="text-[10px] leading-none">✓</span>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-2">
+                            {(counts.open > 0 || counts.done > 0) && (
+                              <span className="text-xs text-stone-400 tabular-nums">
+                                {counts.open > 0 && `${counts.open} to-do${counts.open === 1 ? "" : "s"}`}
+                                {counts.open > 0 && counts.done > 0 && " · "}
+                                {counts.done > 0 && `${counts.done} done`}
+                              </span>
                             )}
-                          </button>
-                          <span
-                            className={cn(
-                              "min-w-0 text-sm leading-relaxed",
-                              checked
-                                ? "text-stone-400 line-through decoration-stone-300"
-                                : "text-stone-700"
-                            )}
-                          >
-                            <Linkified text={m[2]} />
-                          </span>
+                            <button
+                              onClick={() => removeNote(note.id)}
+                              className="rounded p-1 text-xs text-stone-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
+                              title="Delete"
+                            >
+                              ✕
+                            </button>
+                          </div>
                         </div>
-                      );
-                    }
-                    return line === "" ? (
-                      <div key={i} className="h-2.5" />
-                    ) : (
-                      <p key={i} className="text-sm leading-relaxed whitespace-pre-wrap text-stone-700">
-                        <Linkified text={line} />
-                      </p>
+
+                        {/* Collapsed: faded two-line preview */}
+                        {!isOpen && note.body !== "" && (
+                          <div
+                            onClick={() => toggleExpanded(note.id)}
+                            className="mt-1.5 max-h-[2.9rem] cursor-pointer overflow-hidden pl-5 text-sm leading-relaxed whitespace-pre-wrap text-stone-500 [mask-image:linear-gradient(to_bottom,black_30%,transparent_100%)]"
+                          >
+                            {note.body.replace(/^\[( |x)\]\s?/gm, "☐ ")}
+                          </div>
+                        )}
+
+                        {/* Expanded: full text-editor body */}
+                        {isOpen &&
+                          (editingBody ? (
+                            <textarea
+                              ref={(el) => {
+                                fieldRef.current = el;
+                              }}
+                              value={note.body}
+                              rows={2}
+                              onChange={(e) => {
+                                setNote(note.id, { body: e.target.value });
+                                e.target.style.height = "auto";
+                                e.target.style.height = `${e.target.scrollHeight}px`;
+                              }}
+                              onBlur={() => commit(note, "body")}
+                              onKeyDown={(e) => {
+                                if (e.key === "Escape") commit(note, "body");
+                              }}
+                              placeholder={'Notes, links, explanations... start a line with "[] " to make it a to-do'}
+                              className="mt-2 ml-5 w-[calc(100%-1.25rem)] resize-none overflow-hidden bg-transparent text-sm leading-relaxed text-stone-700 outline-none placeholder:text-stone-300"
+                            />
+                          ) : (
+                            <div
+                              className="mt-2 cursor-text pl-5"
+                              onClick={() => setEditing({ id: note.id, field: "body" })}
+                            >
+                              {note.body === "" ? (
+                                <p className="text-sm text-stone-300">
+                                  Notes, links, explanations... start a line with
+                                  &quot;[]&nbsp;&quot; to make it a to-do
+                                </p>
+                              ) : (
+                                lines.map((line, i) => {
+                                  const m = line.match(CHECKBOX_RE);
+                                  if (m) {
+                                    const checked = m[1] === "x";
+                                    return (
+                                      <div key={i} className="flex items-start gap-2 py-0.5">
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            toggleLine(note, i);
+                                          }}
+                                          className={cn(
+                                            "mt-[3px] flex size-4 shrink-0 items-center justify-center rounded border transition-colors",
+                                            checked
+                                              ? "border-indigo-600 bg-indigo-600 text-white"
+                                              : "border-stone-300 bg-white hover:border-indigo-400"
+                                          )}
+                                          title={checked ? "Uncheck" : "Mark done"}
+                                        >
+                                          {checked && (
+                                            <span className="text-[10px] leading-none">✓</span>
+                                          )}
+                                        </button>
+                                        <span
+                                          className={cn(
+                                            "min-w-0 text-sm leading-relaxed",
+                                            checked
+                                              ? "text-stone-400 line-through decoration-stone-300"
+                                              : "text-stone-700"
+                                          )}
+                                        >
+                                          <Linkified text={m[2]} />
+                                        </span>
+                                      </div>
+                                    );
+                                  }
+                                  return line === "" ? (
+                                    <div key={i} className="h-2.5" />
+                                  ) : (
+                                    <p
+                                      key={i}
+                                      className="text-sm leading-relaxed whitespace-pre-wrap text-stone-700"
+                                    >
+                                      <Linkified text={line} />
+                                    </p>
+                                  );
+                                })
+                              )}
+                            </div>
+                          ))}
+
+                        {/* Expanded footer: month picker */}
+                        {isOpen && (
+                          <div className="mt-3 flex items-center gap-2 pl-5">
+                            <label className="flex items-center gap-1.5 text-xs text-stone-400">
+                              <span>Month</span>
+                              <input
+                                type="month"
+                                value={monthOf(note)}
+                                onChange={(e) => setMonth(note, e.target.value)}
+                                className="rounded-md border border-stone-200 bg-white px-1.5 py-0.5 text-xs text-stone-600 outline-none focus:border-indigo-400"
+                              />
+                            </label>
+                            {monthOf(note) && (
+                              <button
+                                onClick={() => setMonth(note, "")}
+                                className="text-xs text-stone-300 transition-colors hover:text-stone-500"
+                                title="Move to Someday"
+                              >
+                                clear
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </Card>
                     );
-                  })
-                )}
-              </div>
-            )}
-          </Card>
-        );
-      })}
+                  })}
+                </div>
+              </section>
+            );
+          })}
+        </div>
+      )}
 
       <button
-        onClick={addSection}
-        className="w-full rounded-xl border border-dashed border-stone-300 px-4 py-2.5 text-sm font-medium text-stone-400 transition-colors hover:border-indigo-400 hover:text-indigo-600"
+        onClick={addNote}
+        className="mt-6 w-full rounded-xl border border-dashed border-stone-300 px-4 py-2.5 text-sm font-medium text-stone-400 transition-colors hover:border-indigo-400 hover:text-indigo-600"
       >
-        + Add section
+        + Add action item
       </button>
     </div>
   );
