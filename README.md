@@ -100,6 +100,27 @@ URLs. Two endpoints, same server
   - **Anything else**: paste the same URL into any MCP-compatible client;
     no OAuth flow is required.
 
+- **JSON configuration** (Claude Code `.mcp.json`, Gemini CLI
+  `settings.json`, Cursor `mcp.json`, ...): no LLM API key is needed — the
+  AI tool brings its own model; the only credential is `MCP_TOKEN`.
+
+  ```json
+  {
+    "mcpServers": {
+      "career-copilot": {
+        "type": "http",
+        "url": "https://<your-app>/api/mcp",
+        "headers": { "Authorization": "Bearer <MCP_TOKEN>" }
+      }
+    }
+  }
+  ```
+
+  If the tool's config has no `headers` field, set `url` to the
+  token-in-path endpoint instead; for stdio-only configs, bridge with
+  `"command": "npx", "args": ["-y", "mcp-remote", "<token-in-path URL>"]`.
+  Exact per-tool JSON lives in the in-app guide at `/guide/connect`.
+
 MCP tools: `get_career_narrative`, `update_career_narrative`,
 `list_notes`, `upsert_note`, `delete_note`,
 `get_profile`, `update_profile`, `upsert_profile_entry`,

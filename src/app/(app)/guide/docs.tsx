@@ -243,6 +243,61 @@ claude mcp add --transport http career-copilot ${origin}/api/mcp \\
 # Gemini CLI
 gemini mcp add --transport http career-copilot ${origin}/api/mcp \\
   --header "Authorization: Bearer ${token}"`}</CodeBlock>
+        <H2>JSON configuration</H2>
+        <P>
+          Many tools configure MCP servers in a JSON file instead of a
+          settings screen. <B>No LLM API key is needed anywhere</B> — the AI
+          tool brings its own model; the only credential is your{" "}
+          <Code>MCP_TOKEN</Code>, passed as a bearer header (or baked into
+          the URL if the tool&apos;s config has no headers field).
+        </P>
+        <P>
+          <B>Claude Code</B> — <Code>.mcp.json</Code> in a project (or add
+          via the CLI command above):
+        </P>
+        <CodeBlock>{`{
+  "mcpServers": {
+    "career-copilot": {
+      "type": "http",
+      "url": "${origin}/api/mcp",
+      "headers": { "Authorization": "Bearer ${token}" }
+    }
+  }
+}`}</CodeBlock>
+        <P>
+          <B>Gemini CLI</B> — <Code>~/.gemini/settings.json</Code>:
+        </P>
+        <CodeBlock>{`{
+  "mcpServers": {
+    "career-copilot": {
+      "httpUrl": "${origin}/api/mcp",
+      "headers": { "Authorization": "Bearer ${token}" }
+    }
+  }
+}`}</CodeBlock>
+        <P>
+          <B>Cursor / VS Code and similar</B> — if the config supports remote
+          servers but not headers, point <Code>url</Code> at the token-in-path
+          endpoint:
+        </P>
+        <CodeBlock>{`{
+  "mcpServers": {
+    "career-copilot": { "url": "${connectorUrl}" }
+  }
+}`}</CodeBlock>
+        <P>
+          <B>Stdio-only tools</B> (configs that only accept a{" "}
+          <Code>command</Code>, like older Claude Desktop JSON): bridge with{" "}
+          <Code>mcp-remote</Code>:
+        </P>
+        <CodeBlock>{`{
+  "mcpServers": {
+    "career-copilot": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "${connectorUrl}"]
+    }
+  }
+}`}</CodeBlock>
         <H2>First contact</H2>
         <P>
           The server introduces itself to every connecting AI with
