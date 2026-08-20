@@ -85,7 +85,7 @@ export default async function ApplicationsPage() {
       />
 
       {/* Pipeline stats */}
-      <Card className="grid grid-cols-3 overflow-hidden sm:grid-cols-6 sm:divide-x sm:divide-stone-100">
+      <Card className="grid grid-cols-3 overflow-hidden sm:grid-cols-6 sm:divide-x sm:divide-stone-100 dark:sm:divide-stone-700/60">
         {JOB_STATUSES.map((s) => {
           const count = byStatus.get(s)!.length;
           return (
@@ -93,12 +93,12 @@ export default async function ApplicationsPage() {
               <div
                 className={cn(
                   "text-xl font-semibold tabular-nums",
-                  count > 0 ? "text-stone-900" : "text-stone-300"
+                  count > 0 ? "text-stone-900 dark:text-stone-100" : "text-stone-300 dark:text-stone-600"
                 )}
               >
                 {count}
               </div>
-              <div className="mt-0.5 text-xs font-medium text-stone-500">
+              <div className="mt-0.5 text-xs font-medium text-stone-500 dark:text-stone-400">
                 {STATUS_LABELS[s]}
               </div>
             </div>
@@ -109,7 +109,7 @@ export default async function ApplicationsPage() {
       {dueSoon.length > 0 && (
         <section>
           <SectionTitle count={dueSoon.length}>Deadlines coming up</SectionTitle>
-          <Card className="mt-3 divide-y divide-amber-100 border-amber-200 bg-amber-50/60">
+          <Card className="mt-3 divide-y divide-amber-100 dark:divide-amber-900/50 border-amber-200 dark:border-amber-900 bg-amber-50/60 dark:bg-amber-950/30">
             {dueSoon.map(({ job, days }) => (
               <div
                 key={job.id}
@@ -117,10 +117,10 @@ export default async function ApplicationsPage() {
               >
                 <Link
                   href={`/jobs/${job.id}`}
-                  className="min-w-0 truncate font-medium text-amber-950 hover:text-indigo-700"
+                  className="min-w-0 truncate font-medium text-amber-950 dark:text-amber-200 hover:text-indigo-700 dark:hover:text-indigo-300"
                 >
                   {job.title}
-                  <span className="font-normal text-amber-800/70">
+                  <span className="font-normal text-amber-800/70 dark:text-amber-300/70">
                     {" "}
                     · {job.company}
                   </span>
@@ -128,7 +128,7 @@ export default async function ApplicationsPage() {
                 <span
                   className={cn(
                     "shrink-0 text-xs font-medium tabular-nums",
-                    days <= 2 ? "text-red-600" : "text-amber-700"
+                    days <= 2 ? "text-red-600 dark:text-red-400" : "text-amber-700 dark:text-amber-400"
                   )}
                 >
                   {deadlineLabel(days)}
@@ -142,13 +142,13 @@ export default async function ApplicationsPage() {
       {/* Tracked jobs */}
       {jobs.length === 0 ? (
         <Card className="border-dashed p-12 text-center shadow-none">
-          <h2 className="text-lg font-semibold text-stone-900">No jobs yet</h2>
-          <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-stone-500">
+          <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-100">No jobs yet</h2>
+          <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-stone-500 dark:text-stone-400">
             Add your first job posting (link + pasted description), fill out
             your{" "}
             <Link
               href="/profile"
-              className="font-medium text-indigo-600 underline underline-offset-2"
+              className="font-medium text-indigo-600 dark:text-indigo-400 underline underline-offset-2"
             >
               profile
             </Link>
@@ -170,14 +170,14 @@ export default async function ApplicationsPage() {
                   <Link
                     key={job.id}
                     href={`/jobs/${job.id}`}
-                    className="group rounded-xl border border-stone-200 bg-white p-4 shadow-xs transition hover:border-indigo-300 hover:shadow-sm"
+                    className="group rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 p-4 shadow-xs transition hover:border-indigo-300 hover:shadow-sm"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <div className="truncate font-medium text-stone-900 group-hover:text-indigo-700">
+                        <div className="truncate font-medium text-stone-900 dark:text-stone-100 group-hover:text-indigo-700 dark:group-hover:text-indigo-300">
                           {job.title}
                         </div>
-                        <div className="mt-0.5 truncate text-sm text-stone-500">
+                        <div className="mt-0.5 truncate text-sm text-stone-500 dark:text-stone-400">
                           {job.company}
                           {job.location ? ` · ${job.location}` : ""}
                         </div>
@@ -193,7 +193,7 @@ export default async function ApplicationsPage() {
                         <span>Added {formatDate(job.created_at)}</span>
                       )}
                       {!job.jd_text && (
-                        <span className="font-medium text-amber-600">
+                        <span className="font-medium text-amber-600 dark:text-amber-500">
                           No JD pasted
                         </span>
                       )}
@@ -209,7 +209,7 @@ export default async function ApplicationsPage() {
       {/* Application-window timeline */}
       <section>
         <SectionTitle count={events.length}>Application timeline</SectionTitle>
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-stone-500">
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-stone-500 dark:text-stone-400">
           When each company&apos;s application window opens — so you apply in
           week one, not week six. Ask your AI to research companies and import
           their timelines via MCP.
@@ -224,18 +224,18 @@ export default async function ApplicationsPage() {
                 <section key={group.label} className="relative pl-9">
                   <span
                     className={cn(
-                      "absolute top-0.5 left-0 size-[15px] rounded-full border-[3px] bg-white",
+                      "absolute top-0.5 left-0 size-[15px] rounded-full border-[3px] bg-white dark:bg-stone-800",
                       groupOpen
                         ? "border-indigo-500"
                         : groupPast
-                          ? "border-stone-200"
-                          : "border-stone-300"
+                          ? "border-stone-200 dark:border-stone-700"
+                          : "border-stone-300 dark:border-stone-600"
                     )}
                   />
                   <h2
                     className={cn(
                       "text-xs font-semibold tracking-wider uppercase",
-                      groupPast ? "text-stone-400" : "text-stone-600"
+                      groupPast ? "text-stone-400" : "text-stone-600 dark:text-stone-300"
                     )}
                   >
                     {group.label}
@@ -251,18 +251,18 @@ export default async function ApplicationsPage() {
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
                               <div className="flex flex-wrap items-baseline gap-x-2">
-                                <span className="font-medium text-stone-900">
+                                <span className="font-medium text-stone-900 dark:text-stone-100">
                                   {e.company}
                                 </span>
                                 {e.program && (
-                                  <span className="text-sm text-stone-500">
+                                  <span className="text-sm text-stone-500 dark:text-stone-400">
                                     {e.program}
                                   </span>
                                 )}
                               </div>
                               <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs tabular-nums">
                                 {e.window_label && (
-                                  <span className="font-medium text-stone-600">
+                                  <span className="font-medium text-stone-600 dark:text-stone-300">
                                     {e.window_label}
                                   </span>
                                 )}
@@ -276,7 +276,7 @@ export default async function ApplicationsPage() {
                                     href={e.url}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="font-medium text-indigo-600 underline underline-offset-2 hover:text-indigo-700"
+                                    className="font-medium text-indigo-600 dark:text-indigo-400 underline underline-offset-2 hover:text-indigo-700 dark:hover:text-indigo-300"
                                   >
                                     Program page ↗
                                   </a>
@@ -284,14 +284,14 @@ export default async function ApplicationsPage() {
                               </div>
                             </div>
                             {state === "open" && (
-                              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
+                              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">
                                 <span className="size-1.5 rounded-full bg-emerald-500" />
                                 Open now
                               </span>
                             )}
                           </div>
                           {e.notes && (
-                            <p className="mt-2 text-sm leading-relaxed whitespace-pre-wrap text-stone-600">
+                            <p className="mt-2 text-sm leading-relaxed whitespace-pre-wrap text-stone-600 dark:text-stone-300">
                               {e.notes}
                             </p>
                           )}
@@ -299,7 +299,7 @@ export default async function ApplicationsPage() {
                             {e.job_id ? (
                               <Link
                                 href={`/jobs/${e.job_id}`}
-                                className="text-xs font-medium text-indigo-600 hover:text-indigo-700"
+                                className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300"
                               >
                                 View tracked job →
                               </Link>
@@ -331,13 +331,13 @@ export default async function ApplicationsPage() {
 
         <Card className="mt-6">
           <details>
-            <summary className="flex cursor-pointer items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm font-medium text-stone-800 transition-colors hover:bg-stone-50">
+            <summary className="flex cursor-pointer items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm font-medium text-stone-800 dark:text-stone-200 transition-colors hover:bg-stone-50 dark:hover:bg-stone-700/60">
               <span>+ Add timeline event manually</span>
-              <span className="text-xs text-stone-300">▾</span>
+              <span className="text-xs text-stone-300 dark:text-stone-600">▾</span>
             </summary>
             <form
               action={addTimelineEvent}
-              className="space-y-4 border-t border-stone-100 p-4"
+              className="space-y-4 border-t border-stone-100 dark:border-stone-700/60 p-4"
             >
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Company" hint="required">

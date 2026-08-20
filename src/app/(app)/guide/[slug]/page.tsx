@@ -23,10 +23,10 @@ export default async function GuideDocPage({
       <div className="text-xs font-semibold tracking-wider text-stone-400 uppercase">
         {doc.group}
       </div>
-      <h1 className="mt-1.5 text-2xl font-semibold tracking-tight text-stone-900">
+      <h1 className="mt-1.5 text-2xl font-semibold tracking-tight text-stone-900 dark:text-stone-100">
         {doc.title}
       </h1>
-      <p className="mt-2 mb-6 text-sm leading-relaxed text-stone-500">
+      <p className="mt-2 mb-6 text-sm leading-relaxed text-stone-500 dark:text-stone-400">
         {doc.description}
       </p>
       <doc.Body origin={origin} token={token} connectorUrl={connectorUrl} />

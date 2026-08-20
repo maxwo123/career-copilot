@@ -29,8 +29,8 @@ export function GuideSidebar({ groups }: { groups: NavGroup[] }) {
                     className={cn(
                       "block rounded-md px-2 py-1.5 text-sm transition-colors",
                       active
-                        ? "bg-stone-200/60 font-medium text-stone-900"
-                        : "text-stone-500 hover:bg-stone-100 hover:text-stone-900"
+                        ? "bg-stone-200/60 dark:bg-stone-700 font-medium text-stone-900 dark:text-stone-100"
+                        : "text-stone-500 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-stone-900 dark:hover:text-stone-100"
                     )}
                   >
                     {item.title}

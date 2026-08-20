@@ -18,11 +18,11 @@ export function Disclosure({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="rounded-lg border border-stone-200">
+    <div className="rounded-lg border border-stone-200 dark:border-stone-700">
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="flex w-full items-baseline gap-2 rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-stone-50"
+        className="flex w-full items-baseline gap-2 rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-stone-50 dark:hover:bg-stone-700/60"
       >
         <span
           className={cn(
@@ -39,12 +39,12 @@ export function Disclosure({
           onClick={() => setOpen(true)}
           className="-mt-1.5 cursor-pointer px-3 pb-2.5 pl-8"
         >
-          <div className="max-h-14 overflow-hidden text-xs leading-relaxed whitespace-pre-wrap text-stone-500 [mask-image:linear-gradient(to_bottom,black_35%,transparent_100%)]">
+          <div className="max-h-14 overflow-hidden text-xs leading-relaxed whitespace-pre-wrap text-stone-500 dark:text-stone-400 [mask-image:linear-gradient(to_bottom,black_35%,transparent_100%)]">
             {preview}
           </div>
         </div>
       )}
-      {open && <div className="border-t border-stone-100 p-4">{children}</div>}
+      {open && <div className="border-t border-stone-100 dark:border-stone-700/60 p-4">{children}</div>}
     </div>
   );
 }

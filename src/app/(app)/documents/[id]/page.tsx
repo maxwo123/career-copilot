@@ -41,14 +41,14 @@ export default async function DocumentPage({
         {job && (
           <Link
             href={`/jobs/${job.id}`}
-            className="text-xs font-medium text-stone-400 transition-colors hover:text-stone-600"
+            className="text-xs font-medium text-stone-400 transition-colors hover:text-stone-600 dark:hover:text-stone-300"
           >
             ← {job.title} · {job.company}
           </Link>
         )}
         <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-2xl font-semibold tracking-tight text-stone-900">
+            <h1 className="text-2xl font-semibold tracking-tight text-stone-900 dark:text-stone-100">
               {doc.title || DOC_TYPE_LABELS[doc.doc_type]}
             </h1>
             <div className="mt-1.5 flex items-center gap-2">
@@ -73,11 +73,11 @@ export default async function DocumentPage({
 
       <Card className="no-print mt-6">
         <details>
-          <summary className="flex cursor-pointer items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm font-medium text-stone-800 transition-colors hover:bg-stone-50">
+          <summary className="flex cursor-pointer items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm font-medium text-stone-800 dark:text-stone-200 transition-colors hover:bg-stone-50 dark:hover:bg-stone-700/60">
             <span>Raw Markdown</span>
-            <span className="text-xs text-stone-300">▾</span>
+            <span className="text-xs text-stone-300 dark:text-stone-600">▾</span>
           </summary>
-          <pre className="max-h-96 overflow-auto border-t border-stone-100 p-4 font-mono text-xs leading-relaxed whitespace-pre-wrap text-stone-600">
+          <pre className="max-h-96 overflow-auto border-t border-stone-100 dark:border-stone-700/60 p-4 font-mono text-xs leading-relaxed whitespace-pre-wrap text-stone-600 dark:text-stone-300">
             {doc.content_md}
           </pre>
         </details>

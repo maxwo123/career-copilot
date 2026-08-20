@@ -56,7 +56,7 @@ function Linkified({ text }: { text: string }) {
             target="_blank"
             rel="noreferrer"
             onClick={(e) => e.stopPropagation()}
-            className="break-all text-indigo-600 underline underline-offset-2 hover:text-indigo-700"
+            className="break-all text-indigo-600 dark:text-indigo-400 underline underline-offset-2 hover:text-indigo-700 dark:hover:text-indigo-300"
           >
             {part.replace(/^https?:\/\/(www\.)?/, "")}
           </a>
@@ -195,18 +195,18 @@ export function NotesEditor({ initialNotes }: { initialNotes: Note[] }) {
               <section key={group.month || "someday"} className="relative pl-9">
                 <span
                   className={cn(
-                    "absolute top-0.5 left-0 size-[15px] rounded-full border-[3px] bg-white",
+                    "absolute top-0.5 left-0 size-[15px] rounded-full border-[3px] bg-white dark:bg-stone-800",
                     isCurrent
                       ? "border-indigo-500"
                       : isPast
-                        ? "border-stone-200"
-                        : "border-stone-300"
+                        ? "border-stone-200 dark:border-stone-700"
+                        : "border-stone-300 dark:border-stone-600"
                   )}
                 />
                 <h2
                   className={cn(
                     "text-xs font-semibold tracking-wider uppercase",
-                    isPast ? "text-stone-400" : "text-stone-600"
+                    isPast ? "text-stone-400" : "text-stone-600 dark:text-stone-300"
                   )}
                 >
                   {monthLabel(group.month)}
@@ -231,7 +231,7 @@ export function NotesEditor({ initialNotes }: { initialNotes: Note[] }) {
                             <button
                               onClick={() => toggleExpanded(note.id)}
                               className={cn(
-                                "w-3 shrink-0 text-center text-[10px] text-stone-400 transition-transform hover:text-stone-600",
+                                "w-3 shrink-0 text-center text-[10px] text-stone-400 transition-transform hover:text-stone-600 dark:hover:text-stone-300",
                                 isOpen && "rotate-90"
                               )}
                               title={isOpen ? "Collapse" : "Expand"}
@@ -256,7 +256,7 @@ export function NotesEditor({ initialNotes }: { initialNotes: Note[] }) {
                                   if (e.key === "Escape") commit(note, "title");
                                 }}
                                 placeholder="Action item title..."
-                                className="w-full bg-transparent font-semibold text-stone-900 outline-none placeholder:font-normal placeholder:text-stone-300"
+                                className="w-full bg-transparent font-semibold text-stone-900 dark:text-stone-100 outline-none placeholder:font-normal placeholder:text-stone-300"
                               />
                             ) : (
                               <h3
@@ -265,11 +265,11 @@ export function NotesEditor({ initialNotes }: { initialNotes: Note[] }) {
                                     ? setEditing({ id: note.id, field: "title" })
                                     : toggleExpanded(note.id)
                                 }
-                                className="min-w-0 cursor-pointer truncate font-semibold text-stone-900"
+                                className="min-w-0 cursor-pointer truncate font-semibold text-stone-900 dark:text-stone-100"
                                 title={isOpen ? "Click to rename" : "Click to expand"}
                               >
                                 {note.title || (
-                                  <span className="font-normal text-stone-300">
+                                  <span className="font-normal text-stone-300 dark:text-stone-600">
                                     Untitled action item
                                   </span>
                                 )}
@@ -286,7 +286,7 @@ export function NotesEditor({ initialNotes }: { initialNotes: Note[] }) {
                             )}
                             <button
                               onClick={() => removeNote(note.id)}
-                              className="rounded p-1 text-xs text-stone-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
+                              className="rounded p-1 text-xs text-stone-300 dark:text-stone-600 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
                               title="Delete"
                             >
                               ✕
@@ -298,7 +298,7 @@ export function NotesEditor({ initialNotes }: { initialNotes: Note[] }) {
                         {!isOpen && note.body !== "" && (
                           <div
                             onClick={() => toggleExpanded(note.id)}
-                            className="mt-1.5 max-h-[2.9rem] cursor-pointer overflow-hidden pl-5 text-sm leading-relaxed whitespace-pre-wrap text-stone-500 [mask-image:linear-gradient(to_bottom,black_30%,transparent_100%)]"
+                            className="mt-1.5 max-h-[2.9rem] cursor-pointer overflow-hidden pl-5 text-sm leading-relaxed whitespace-pre-wrap text-stone-500 dark:text-stone-400 [mask-image:linear-gradient(to_bottom,black_30%,transparent_100%)]"
                           >
                             {note.body.replace(/^\[( |x)\]\s?/gm, "☐ ")}
                           </div>
@@ -323,7 +323,7 @@ export function NotesEditor({ initialNotes }: { initialNotes: Note[] }) {
                                 if (e.key === "Escape") commit(note, "body");
                               }}
                               placeholder={'Notes, links, explanations... start a line with "[] " to make it a to-do'}
-                              className="mt-2 ml-5 w-[calc(100%-1.25rem)] resize-none overflow-hidden bg-transparent text-sm leading-relaxed text-stone-700 outline-none placeholder:text-stone-300"
+                              className="mt-2 ml-5 w-[calc(100%-1.25rem)] resize-none overflow-hidden bg-transparent text-sm leading-relaxed text-stone-700 dark:text-stone-300 outline-none placeholder:text-stone-300"
                             />
                           ) : (
                             <div
@@ -331,7 +331,7 @@ export function NotesEditor({ initialNotes }: { initialNotes: Note[] }) {
                               onClick={() => setEditing({ id: note.id, field: "body" })}
                             >
                               {note.body === "" ? (
-                                <p className="text-sm text-stone-300">
+                                <p className="text-sm text-stone-300 dark:text-stone-600">
                                   Notes, links, explanations... start a line with
                                   &quot;[]&nbsp;&quot; to make it a to-do
                                 </p>
@@ -351,7 +351,7 @@ export function NotesEditor({ initialNotes }: { initialNotes: Note[] }) {
                                             "mt-[3px] flex size-4 shrink-0 items-center justify-center rounded border transition-colors",
                                             checked
                                               ? "border-indigo-600 bg-indigo-600 text-white"
-                                              : "border-stone-300 bg-white hover:border-indigo-400"
+                                              : "border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-800 hover:border-indigo-400"
                                           )}
                                           title={checked ? "Uncheck" : "Mark done"}
                                         >
@@ -364,7 +364,7 @@ export function NotesEditor({ initialNotes }: { initialNotes: Note[] }) {
                                             "min-w-0 text-sm leading-relaxed",
                                             checked
                                               ? "text-stone-400 line-through decoration-stone-300"
-                                              : "text-stone-700"
+                                              : "text-stone-700 dark:text-stone-300"
                                           )}
                                         >
                                           <Linkified text={m[2]} />
@@ -377,7 +377,7 @@ export function NotesEditor({ initialNotes }: { initialNotes: Note[] }) {
                                   ) : (
                                     <p
                                       key={i}
-                                      className="text-sm leading-relaxed whitespace-pre-wrap text-stone-700"
+                                      className="text-sm leading-relaxed whitespace-pre-wrap text-stone-700 dark:text-stone-300"
                                     >
                                       <Linkified text={line} />
                                     </p>
@@ -396,13 +396,13 @@ export function NotesEditor({ initialNotes }: { initialNotes: Note[] }) {
                                 type="month"
                                 value={monthOf(note)}
                                 onChange={(e) => setMonth(note, e.target.value)}
-                                className="rounded-md border border-stone-200 bg-white px-1.5 py-0.5 text-xs text-stone-600 outline-none focus:border-indigo-400"
+                                className="rounded-md border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-1.5 py-0.5 text-xs text-stone-600 dark:text-stone-300 outline-none focus:border-indigo-400"
                               />
                             </label>
                             {monthOf(note) && (
                               <button
                                 onClick={() => setMonth(note, "")}
-                                className="text-xs text-stone-300 transition-colors hover:text-stone-500"
+                                className="text-xs text-stone-300 dark:text-stone-600 transition-colors hover:text-stone-500 dark:hover:text-stone-400"
                                 title="Move to Someday"
                               >
                                 clear
@@ -422,7 +422,7 @@ export function NotesEditor({ initialNotes }: { initialNotes: Note[] }) {
 
       <button
         onClick={addNote}
-        className="mt-6 w-full rounded-xl border border-dashed border-stone-300 px-4 py-2.5 text-sm font-medium text-stone-400 transition-colors hover:border-indigo-400 hover:text-indigo-600"
+        className="mt-6 w-full rounded-xl border border-dashed border-stone-300 dark:border-stone-600 px-4 py-2.5 text-sm font-medium text-stone-400 transition-colors hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400"
       >
         + Add action item
       </button>

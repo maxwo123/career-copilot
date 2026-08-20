@@ -138,11 +138,11 @@ export default async function ProfilePage() {
                     header={
                       <>
                         <span className="min-w-0 flex-1 truncate">
-                          <span className="font-medium text-stone-900">
+                          <span className="font-medium text-stone-900 dark:text-stone-100">
                             {entry.title || "(untitled)"}
                           </span>
                           {entry.organization && (
-                            <span className="text-stone-500">
+                            <span className="text-stone-500 dark:text-stone-400">
                               {" "}
                               · {entry.organization}
                             </span>
@@ -176,7 +176,7 @@ export default async function ProfilePage() {
             )}
 
             <details className="mt-4">
-              <summary className="cursor-pointer text-sm font-medium text-indigo-600 transition-colors hover:text-indigo-700">
+              <summary className="cursor-pointer text-sm font-medium text-indigo-600 dark:text-indigo-400 transition-colors hover:text-indigo-700 dark:hover:text-indigo-300">
                 + Add {SECTION_LABELS[section].toLowerCase()} entry
               </summary>
               <form action={addProfileEntry} className="mt-4 space-y-4">

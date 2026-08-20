@@ -22,19 +22,19 @@ export interface GuideDoc {
 
 function H2({ children }: { children: ReactNode }) {
   return (
-    <h2 className="mt-8 mb-3 text-lg font-semibold tracking-tight text-stone-900">
+    <h2 className="mt-8 mb-3 text-lg font-semibold tracking-tight text-stone-900 dark:text-stone-100">
       {children}
     </h2>
   );
 }
 
 function P({ children }: { children: ReactNode }) {
-  return <p className="mb-3 text-sm leading-relaxed text-stone-600">{children}</p>;
+  return <p className="mb-3 text-sm leading-relaxed text-stone-600 dark:text-stone-300">{children}</p>;
 }
 
 function Ul({ children }: { children: ReactNode }) {
   return (
-    <ul className="mb-3 list-disc space-y-1.5 pl-5 text-sm leading-relaxed text-stone-600">
+    <ul className="mb-3 list-disc space-y-1.5 pl-5 text-sm leading-relaxed text-stone-600 dark:text-stone-300">
       {children}
     </ul>
   );
@@ -42,19 +42,19 @@ function Ul({ children }: { children: ReactNode }) {
 
 function Ol({ children }: { children: ReactNode }) {
   return (
-    <ol className="mb-3 list-decimal space-y-1.5 pl-5 text-sm leading-relaxed text-stone-600">
+    <ol className="mb-3 list-decimal space-y-1.5 pl-5 text-sm leading-relaxed text-stone-600 dark:text-stone-300">
       {children}
     </ol>
   );
 }
 
 function B({ children }: { children: ReactNode }) {
-  return <span className="font-medium text-stone-800">{children}</span>;
+  return <span className="font-medium text-stone-800 dark:text-stone-200">{children}</span>;
 }
 
 function Code({ children }: { children: ReactNode }) {
   return (
-    <code className="rounded-md bg-stone-100 px-1.5 py-0.5 font-mono text-xs">
+    <code className="rounded-md bg-stone-100 dark:bg-stone-800 px-1.5 py-0.5 font-mono text-xs">
       {children}
     </code>
   );
@@ -62,7 +62,7 @@ function Code({ children }: { children: ReactNode }) {
 
 function CodeBlock({ children }: { children: string }) {
   return (
-    <pre className="mb-3 overflow-x-auto rounded-lg border border-stone-200 bg-stone-50 p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap text-stone-700">
+    <pre className="mb-3 overflow-x-auto rounded-lg border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap text-stone-700 dark:text-stone-300">
       {children}
     </pre>
   );
@@ -71,7 +71,7 @@ function CodeBlock({ children }: { children: string }) {
 function A({ href, children }: { href: string; children: ReactNode }) {
   const external = href.startsWith("http");
   const cls =
-    "font-medium text-indigo-600 underline underline-offset-2 hover:text-indigo-700";
+    "font-medium text-indigo-600 dark:text-indigo-400 underline underline-offset-2 hover:text-indigo-700 dark:hover:text-indigo-300";
   return external ? (
     <a href={href} target="_blank" rel="noreferrer" className={cls}>
       {children}
@@ -86,7 +86,7 @@ function A({ href, children }: { href: string; children: ReactNode }) {
 function Prompt({ children }: { children: string }) {
   return (
     <li className="mb-1.5">
-      <code className="rounded-md bg-stone-100 px-1.5 py-0.5 font-mono text-xs leading-relaxed">
+      <code className="rounded-md bg-stone-100 dark:bg-stone-800 px-1.5 py-0.5 font-mono text-xs leading-relaxed">
         {children}
       </code>
     </li>

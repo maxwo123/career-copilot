@@ -18,6 +18,16 @@ body {
   background: #e0e7ff; /* indigo-100 */
 }
 
+/* Dark mode body overrides */
+.dark body {
+  background: #1c1917; /* stone-900 */
+  color: #e7e5e4; /* stone-200 */
+}
+
+.dark ::selection {
+  background: #312e81; /* indigo-900 */
+}
+
 /* Markdown document rendering (tailored resumes, cover letters). */
 .doc-prose {
   line-height: 1.55;
@@ -105,8 +115,41 @@ body {
   font-size: 0.85em;
 }
 
+/* Dark mode doc-prose overrides */
+.dark .doc-prose h2 {
+  border-bottom-color: #44403c; /* stone-700 */
+}
+.dark .doc-prose a {
+  color: #818cf8; /* indigo-400 */
+}
+.dark .doc-prose hr {
+  border-color: #44403c;
+}
+.dark .doc-prose th,
+.dark .doc-prose td {
+  border-color: #44403c;
+}
+.dark .doc-prose th {
+  background: #292524; /* stone-800 */
+}
+.dark .doc-prose blockquote {
+  border-left-color: #44403c;
+  color: #a8a29e; /* stone-400 */
+}
+.dark .doc-prose code {
+  background: #292524; /* stone-800 */
+}
+
 /* Print: the document page becomes the printable resume/letter itself. */
 @media print {
+  /* Force light mode for print */
+  .dark {
+    color-scheme: light;
+  }
+  .dark body {
+    background: #fff;
+    color: #1c1917;
+  }
   body {
     background: #fff;
   }
@@ -114,6 +157,8 @@ body {
     display: none !important;
   }
   .print-sheet {
+    background: #fff !important;
+    color: #1c1917 !important;
     box-shadow: none !important;
     border: none !important;
     border-radius: 0 !important;

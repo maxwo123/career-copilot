@@ -37,11 +37,11 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-screen items-center justify-center p-6">
       <div className="w-full max-w-sm">
-        <div className="rounded-2xl border border-stone-200 bg-white p-8 shadow-sm">
-          <h1 className="text-xl font-semibold tracking-tight text-stone-900">
-            Career<span className="text-indigo-600">Copilot</span>
+        <div className="rounded-2xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 p-8 shadow-sm">
+          <h1 className="text-xl font-semibold tracking-tight text-stone-900 dark:text-stone-100">
+            Career<span className="text-indigo-600 dark:text-indigo-400">Copilot</span>
           </h1>
-          <p className="mt-1.5 text-sm leading-relaxed text-stone-500">
+          <p className="mt-1.5 text-sm leading-relaxed text-stone-500 dark:text-stone-400">
             Your job applications, tracked. Your resumes, crafted with Claude.
           </p>
 
@@ -73,12 +73,12 @@ export default function LoginPage() {
               />
             </Field>
             {error && (
-              <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              <p className="rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-3 py-2 text-sm text-red-700 dark:text-red-300">
                 {error}
               </p>
             )}
             {notice && (
-              <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+              <p className="rounded-lg border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
                 {notice}
               </p>
             )}

@@ -39,11 +39,11 @@ export default async function Dashboard() {
       {activity.length > 0 && (
         <section>
           <SectionTitle>Recent activity</SectionTitle>
-          <Card className="mt-3 divide-y divide-stone-100">
+          <Card className="mt-3 divide-y divide-stone-100 dark:divide-stone-700/60">
             {activity.map((a) => (
               <div
                 key={a.id}
-                className="flex items-start gap-2.5 px-4 py-2.5 text-sm text-stone-600"
+                className="flex items-start gap-2.5 px-4 py-2.5 text-sm text-stone-600 dark:text-stone-300"
               >
                 <span
                   className={cn(

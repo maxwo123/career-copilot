@@ -58,9 +58,9 @@ function SkillCategory({ entry }: { entry: ProfileEntry }) {
   const remove = (skill: string) => persist(skills.filter((s) => s !== skill));
 
   return (
-    <div className="rounded-lg border border-stone-200 p-3.5">
+    <div className="rounded-lg border border-stone-200 dark:border-stone-700 p-3.5">
       <div className="flex items-baseline gap-2">
-        <h3 className="text-sm font-semibold text-stone-900">
+        <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100">
           {entry.title || "(untitled)"}
         </h3>
         <span className="text-xs text-stone-400 tabular-nums">
@@ -80,7 +80,7 @@ function SkillCategory({ entry }: { entry: ProfileEntry }) {
               });
             }
           }}
-          className="ml-auto text-xs font-medium text-stone-300 transition-colors hover:text-red-500"
+          className="ml-auto text-xs font-medium text-stone-300 dark:text-stone-600 transition-colors hover:text-red-500"
           title="Delete category"
         >
           Delete
@@ -91,7 +91,7 @@ function SkillCategory({ entry }: { entry: ProfileEntry }) {
         {skills.map((skill) => (
           <span
             key={skill}
-            className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 py-1 pr-1.5 pl-2.5 text-xs font-medium text-indigo-800"
+            className="inline-flex items-center gap-1 rounded-full border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/50 py-1 pr-1.5 pl-2.5 text-xs font-medium text-indigo-800 dark:text-indigo-300"
           >
             {skill}
             <button
@@ -140,7 +140,7 @@ function SkillCategory({ entry }: { entry: ProfileEntry }) {
                 setDraft("");
                 setAdding(false);
               }}
-              className="px-1 text-xs font-medium text-stone-400 transition-colors hover:text-stone-600"
+              className="px-1 text-xs font-medium text-stone-400 transition-colors hover:text-stone-600 dark:hover:text-stone-300"
             >
               Done
             </button>
@@ -148,7 +148,7 @@ function SkillCategory({ entry }: { entry: ProfileEntry }) {
         ) : (
           <button
             onClick={() => setAdding(true)}
-            className="inline-flex h-[26px] items-center rounded-full border border-dashed border-stone-300 px-2.5 text-xs font-medium text-stone-500 transition-colors hover:border-indigo-400 hover:text-indigo-600"
+            className="inline-flex h-[26px] items-center rounded-full border border-dashed border-stone-300 dark:border-stone-600 px-2.5 text-xs font-medium text-stone-500 dark:text-stone-400 transition-colors hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400"
           >
             + Add skill
           </button>
@@ -222,7 +222,7 @@ export function SkillsManager({ entries }: { entries: ProfileEntry[] }) {
           <Button variant="ghost" size="md" onClick={() => setCreating(false)}>
             Cancel
           </Button>
-          {error && <span className="text-xs text-red-600">{error}</span>}
+          {error && <span className="text-xs text-red-600 dark:text-red-400">{error}</span>}
         </div>
       )}
 

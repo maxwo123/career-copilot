@@ -24,7 +24,7 @@ import {
 } from "@/lib/ui";
 
 const summaryCls =
-  "flex cursor-pointer items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm font-medium text-stone-800 transition-colors hover:bg-stone-50";
+  "flex cursor-pointer items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm font-medium text-stone-800 dark:text-stone-200 transition-colors hover:bg-stone-50 dark:hover:bg-stone-700/60";
 
 export default async function JobPage({
   params,
@@ -52,16 +52,16 @@ export default async function JobPage({
       <div>
         <Link
           href="/applications"
-          className="text-xs font-medium text-stone-400 transition-colors hover:text-stone-600"
+          className="text-xs font-medium text-stone-400 transition-colors hover:text-stone-600 dark:hover:text-stone-300"
         >
           ← Applications
         </Link>
         <div className="mt-2 flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="text-2xl font-semibold tracking-tight text-stone-900">
+            <h1 className="text-2xl font-semibold tracking-tight text-stone-900 dark:text-stone-100">
               {job.title}
             </h1>
-            <p className="mt-1 text-sm text-stone-500">
+            <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
               {job.company}
               {job.location ? ` · ${job.location}` : ""}
               {job.source ? ` · via ${job.source}` : ""}
@@ -71,7 +71,7 @@ export default async function JobPage({
                 href={job.url}
                 target="_blank"
                 rel="noreferrer"
-                className="mt-1 inline-block text-sm font-medium text-indigo-600 underline underline-offset-2 hover:text-indigo-700"
+                className="mt-1 inline-block text-sm font-medium text-indigo-600 dark:text-indigo-400 underline underline-offset-2 hover:text-indigo-700 dark:hover:text-indigo-300"
               >
                 View posting ↗
               </a>
@@ -101,7 +101,7 @@ export default async function JobPage({
             {job.deadline && (
               <>
                 <span className="text-right text-stone-400">Deadline</span>
-                <span className="text-stone-600 tabular-nums">
+                <span className="text-stone-600 dark:text-stone-300 tabular-nums">
                   {formatDate(job.deadline)}
                 </span>
               </>
@@ -109,13 +109,13 @@ export default async function JobPage({
             {job.applied_at && (
               <>
                 <span className="text-right text-stone-400">Applied</span>
-                <span className="text-stone-600 tabular-nums">
+                <span className="text-stone-600 dark:text-stone-300 tabular-nums">
                   {formatDate(job.applied_at)}
                 </span>
               </>
             )}
             <span className="text-right text-stone-400">Added</span>
-            <span className="text-stone-600 tabular-nums">
+            <span className="text-stone-600 dark:text-stone-300 tabular-nums">
               {formatDate(job.created_at)}
             </span>
           </div>
@@ -126,13 +126,13 @@ export default async function JobPage({
       <section>
         <SectionTitle count={documents.length}>Documents</SectionTitle>
         {documents.length === 0 ? (
-          <Card className="mt-3 border-dashed border-indigo-200 bg-indigo-50/40 p-4 text-sm leading-relaxed text-stone-600 shadow-none">
-            <p className="font-medium text-stone-800">
+          <Card className="mt-3 border-dashed border-indigo-200 dark:border-indigo-800 bg-indigo-50/40 dark:bg-indigo-950/30 p-4 text-sm leading-relaxed text-stone-600 dark:text-stone-300 shadow-none">
+            <p className="font-medium text-stone-800 dark:text-stone-200">
               No tailored documents yet.
             </p>
             <p className="mt-1">
               Open Claude Code and say something like:{" "}
-              <code className="rounded-md bg-white px-1.5 py-0.5 font-mono text-xs">
+              <code className="rounded-md bg-white dark:bg-stone-800 px-1.5 py-0.5 font-mono text-xs">
                 Tailor a resume for the {job.company} job in Career Copilot
               </code>{" "}
               — Claude reads this job&apos;s description and your profile via
@@ -140,7 +140,7 @@ export default async function JobPage({
             </p>
           </Card>
         ) : (
-          <Card className="mt-3 divide-y divide-stone-100">
+          <Card className="mt-3 divide-y divide-stone-100 dark:divide-stone-700/60">
             {documents.map((d) => (
               <div
                 key={d.id}
@@ -149,7 +149,7 @@ export default async function JobPage({
                 <Badge>{DOC_TYPE_LABELS[d.doc_type]}</Badge>
                 <Link
                   href={`/documents/${d.id}`}
-                  className="min-w-0 truncate text-sm font-medium text-stone-900 hover:text-indigo-700"
+                  className="min-w-0 truncate text-sm font-medium text-stone-900 dark:text-stone-100 hover:text-indigo-700 dark:hover:text-indigo-300"
                 >
                   {d.title || `${DOC_TYPE_LABELS[d.doc_type]} v${d.version}`}
                   <span className="ml-1.5 text-xs font-normal text-stone-400 tabular-nums">
@@ -161,7 +161,7 @@ export default async function JobPage({
                 </span>
                 <form action={deleteDocument.bind(null, d.id, job.id)}>
                   <button
-                    className="rounded p-1 text-stone-300 transition-colors hover:text-red-500"
+                    className="rounded p-1 text-stone-300 dark:text-stone-600 transition-colors hover:text-red-500"
                     title="Delete document"
                   >
                     ✕
@@ -184,16 +184,16 @@ export default async function JobPage({
                   · {job.jd_text.length.toLocaleString()} chars
                 </span>
               ) : (
-                <span className="font-normal text-amber-600">
+                <span className="font-normal text-amber-600 dark:text-amber-500">
                   — missing! Paste it below so Claude can tailor documents.
                 </span>
               )}
             </span>
-            <span className="text-xs text-stone-300">▾</span>
+            <span className="text-xs text-stone-300 dark:text-stone-600">▾</span>
           </summary>
           {job.jd_text ? (
-            <div className="border-t border-stone-100 p-4">
-              <pre className="max-h-96 overflow-auto font-mono text-xs leading-relaxed whitespace-pre-wrap text-stone-600">
+            <div className="border-t border-stone-100 dark:border-stone-700/60 p-4">
+              <pre className="max-h-96 overflow-auto font-mono text-xs leading-relaxed whitespace-pre-wrap text-stone-600 dark:text-stone-300">
                 {job.jd_text}
               </pre>
             </div>
@@ -206,11 +206,11 @@ export default async function JobPage({
         <details>
           <summary className={summaryCls}>
             <span>Edit details &amp; notes</span>
-            <span className="text-xs text-stone-300">▾</span>
+            <span className="text-xs text-stone-300 dark:text-stone-600">▾</span>
           </summary>
           <form
             action={updateJobDetails.bind(null, job.id)}
-            className="space-y-4 border-t border-stone-100 p-4"
+            className="space-y-4 border-t border-stone-100 dark:border-stone-700/60 p-4"
           >
             <div className="grid gap-4 sm:grid-cols-3">
               <Field label="Posting URL">
@@ -246,7 +246,7 @@ export default async function JobPage({
         <section>
           <SectionTitle>Notes</SectionTitle>
           <Card className="mt-3 p-4">
-            <p className="text-sm leading-relaxed whitespace-pre-wrap text-stone-700">
+            <p className="text-sm leading-relaxed whitespace-pre-wrap text-stone-700 dark:text-stone-300">
               {job.notes}
             </p>
           </Card>
