@@ -116,8 +116,11 @@ URLs. Two endpoints, same server
   }
   ```
 
-  If the tool's config has no `headers` field, set `url` to the
-  token-in-path endpoint instead; for stdio-only configs, bridge with
+  The URL key name varies by tool: Claude Code uses `url`, Gemini CLI uses
+  `httpUrl`, Google Antigravity uses `serverUrl` (in
+  `~/.gemini/config/mcp_config.json`). If the tool's config has no
+  `headers` field, set its URL key to the token-in-path endpoint instead;
+  for stdio-only configs, bridge with
   `"command": "npx", "args": ["-y", "mcp-remote", "<token-in-path URL>"]`.
   Exact per-tool JSON lives in the in-app guide at `/guide/connect`.
 

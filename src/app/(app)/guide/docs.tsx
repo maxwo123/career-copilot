@@ -276,6 +276,20 @@ gemini mcp add --transport http career-copilot ${origin}/api/mcp \\
   }
 }`}</CodeBlock>
         <P>
+          <B>Google Antigravity</B> —{" "}
+          <Code>~/.gemini/config/mcp_config.json</Code> (or via the agent
+          panel: ... → MCP Servers → Manage → View raw config). Note the key
+          is <Code>serverUrl</Code>, not <Code>httpUrl</Code>/<Code>url</Code>:
+        </P>
+        <CodeBlock>{`{
+  "mcpServers": {
+    "career-copilot": {
+      "serverUrl": "${origin}/api/mcp",
+      "headers": { "Authorization": "Bearer ${token}" }
+    }
+  }
+}`}</CodeBlock>
+        <P>
           <B>Cursor / VS Code and similar</B> — if the config supports remote
           servers but not headers, point <Code>url</Code> at the token-in-path
           endpoint:
