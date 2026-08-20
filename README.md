@@ -68,8 +68,10 @@ into the app where you view and print them.
 ## Connecting your AI (any MCP-capable tool)
 
 The server is a standard **stateless streamable-HTTP MCP server** — any
-client that speaks MCP over streamable HTTP works. The in-app `/connect`
-page shows ready-to-copy instructions. Two endpoints, same server
+client that speaks MCP over streamable HTTP works. The in-app **Getting
+started** guide (`/guide`) is a full tutorial with a docs-style sidebar;
+`/guide/connect` shows ready-to-copy connection instructions with your live
+URLs. Two endpoints, same server
 (`src/lib/mcp-server.ts`):
 
 - **Header auth** (for clients that can send custom headers — most CLIs):
