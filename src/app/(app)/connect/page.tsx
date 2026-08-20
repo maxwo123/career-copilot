@@ -69,12 +69,26 @@ export default async function ConnectPage() {
       </Card>
 
       <Card className="p-5">
-        <SectionTitle>CLI agents (Claude Code, Codex...)</SectionTitle>
+        <SectionTitle>Gemini</SectionTitle>
+        <p className="mt-3 text-sm leading-relaxed text-stone-600">
+          The consumer Gemini web app doesn&apos;t expose custom MCP
+          connectors yet. Use <span className="font-medium text-stone-800">Gemini CLI</span>{" "}
+          (below), or a{" "}
+          <span className="font-medium text-stone-800">Gemini Enterprise</span>{" "}
+          custom MCP connection (Streamable HTTP) pointed at the same URL:
+        </p>
+        <CodeBlock>{connectorUrl}</CodeBlock>
+      </Card>
+
+      <Card className="p-5">
+        <SectionTitle>CLI agents (Claude Code, Gemini CLI, Codex...)</SectionTitle>
         <p className="mt-3 text-sm leading-relaxed text-stone-600">
           CLI tools can send auth headers, so they use the header-based
           endpoint:
         </p>
         <CodeBlock>{`claude mcp add --transport http career-copilot ${origin}/api/mcp \\
+  --header "Authorization: Bearer ${token}"`}</CodeBlock>
+        <CodeBlock>{`gemini mcp add --transport http career-copilot ${origin}/api/mcp \\
   --header "Authorization: Bearer ${token}"`}</CodeBlock>
       </Card>
 

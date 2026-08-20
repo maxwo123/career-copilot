@@ -1,12 +1,13 @@
 # Career Copilot
 
-Single-user job-application tracker where **Claude Code is the AI engine** —
-no OpenAI/Gemini API keys. The website stores your master profile, job
-postings (link + pasted description), application statuses, and generated
-documents. Claude Code connects through the app's own MCP endpoint
-(`/api/mcp`) and, using its installed resume skills, tailors resumes, cover
-letters, match analyses, and interview prep — saving them back into the app
-where you view and print them.
+Single-user career-growth tracker where **your own AI tools are the engine**
+— the app itself has no AI and holds no LLM API keys, so there is nothing to
+meter or subscribe to. Any MCP-capable assistant (Claude, ChatGPT, Gemini,
+Claude Code, Codex CLI, Gemini CLI, ...) connects through the app's own MCP
+endpoint (`/api/mcp`) and becomes the intelligence layer: it reads your
+career narrative, master profile, and saved jobs, then writes guidance,
+action items, tailored resumes/cover letters, and industry briefings back
+into the app where you view and print them.
 
 ## How it works
 
@@ -15,14 +16,14 @@ where you view and print them.
    Include everything; tailoring means cutting, not inventing.
 2. **Add jobs** — paste the posting link *and the full job description*
    (Handshake etc. are behind logins, so the text must travel with the link).
-3. **Ask Claude** — in Claude Code: *"Tailor a resume for the Stripe job in
-   Career Copilot."* Claude reads the JD + your profile via MCP, runs its
-   resume skills, and saves the document back.
+3. **Ask your AI** — in any connected tool: *"Tailor a resume for the Stripe
+   job in Career Copilot."* The AI reads the JD + your profile via MCP and
+   saves the document back.
 4. **Review & print** — open the document on the site; *Print / Save as PDF*
    uses print-optimized styling.
 5. **Track** — statuses flow saved → applied → interviewing → offer /
    rejected / withdrawn. The dashboard groups jobs, flags upcoming
-   deadlines, and shows an activity feed of what Claude did.
+   deadlines, and shows an activity feed of what your AI did.
 6. **Applications** — `/applications` gathers everything job-application
    related: the pipeline stats, upcoming deadlines, tracked jobs grouped by
    status, and the application timeline (when each company's window opens,
@@ -64,23 +65,38 @@ where you view and print them.
    **"First time? Create the account"** once — that's your login.
 4. Set the same four env vars on Vercel and deploy.
 
-## Connecting your AI
+## Connecting your AI (any MCP-capable tool)
 
-The in-app `/connect` page shows ready-to-copy instructions. Two endpoints,
-same server (`src/lib/mcp-server.ts`):
+The server is a standard **stateless streamable-HTTP MCP server** — any
+client that speaks MCP over streamable HTTP works. The in-app `/connect`
+page shows ready-to-copy instructions. Two endpoints, same server
+(`src/lib/mcp-server.ts`):
 
-- **CLI agents** (can send headers):
+- **Header auth** (for clients that can send custom headers — most CLIs):
+  `https://<your-app>/api/mcp` with `Authorization: Bearer <MCP_TOKEN>`.
 
   ```bash
+  # Claude Code
   claude mcp add --transport http career-copilot https://<your-app>/api/mcp \
+    --header "Authorization: Bearer <MCP_TOKEN>"
+  # Gemini CLI
+  gemini mcp add --transport http career-copilot https://<your-app>/api/mcp \
     --header "Authorization: Bearer <MCP_TOKEN>"
   ```
 
-- **claude.ai / ChatGPT custom connectors** (authless/OAuth only — no custom
-  headers): use the token-in-path URL `https://<your-app>/api/mcp/<MCP_TOKEN>`.
-  Claude: Settings → Connectors → Add custom connector (works on mobile once
-  added). ChatGPT: Settings → Apps → Developer mode (Plus/Pro+; write tools
-  may be limited). The URL is the secret — treat it like a password.
+- **Token-in-path URL** (for consumer apps whose connectors only support
+  authless/OAuth servers and can't send headers):
+  `https://<your-app>/api/mcp/<MCP_TOKEN>` — the URL itself is the secret,
+  treat it like a password.
+  - **Claude** (web/desktop): Settings → Connectors → Add custom connector
+    (works on mobile once added).
+  - **ChatGPT** (Plus/Pro+): Settings → Apps → Advanced → Developer mode →
+    add MCP server (write tools may be limited on Plus/Pro).
+  - **Gemini**: the consumer web app doesn't expose custom MCP connectors
+    yet — use Gemini CLI (above) or a Gemini Enterprise custom MCP
+    connection (Streamable HTTP), which this server satisfies.
+  - **Anything else**: paste the same URL into any MCP-compatible client;
+    no OAuth flow is required.
 
 MCP tools: `get_career_narrative`, `update_career_narrative`,
 `list_notes`, `upsert_note`, `delete_note`,
@@ -122,7 +138,8 @@ work in a fresh chat without re-discovering it.
   `MCP_TOKEN`, `SUPABASE_DB_PASSWORD`) and mirrored in Vercel production
   env vars. Never committed.
 - **MCP:** registered in Claude Code at user scope as `career-copilot`
-  (11 tools). If it's missing, re-register with the command above.
+  (19 tools). If it's missing, re-register with the command above. Other
+  tools connect the same way (header auth) or via the token-in-path URL.
 - **History:** built 2026-08-16 as a restart of two earlier projects — the
   "Handshake Scalper" Python/Gemini CLI and the "Jop Application"
   Next.js/Supabase app (whose paused Supabase project is unrelated to this
@@ -137,8 +154,9 @@ work in a fresh chat without re-discovering it.
 
 ### Code map
 
-- `src/app/api/mcp/route.ts` — the MCP server (stateless JSON-RPC, bearer
-  auth). Add new tools here.
+- `src/lib/mcp-server.ts` — the MCP server (stateless JSON-RPC). Add new
+  tools here. Thin route wrappers: `src/app/api/mcp/route.ts` (header auth)
+  and `src/app/api/mcp/[token]/route.ts` (token-in-path).
 - `src/app/actions.ts` / `src/app/auth-actions.ts` — server actions
   (jobs/profile CRUD; single-user auth bootstrap).
 - `src/app/(app)/` — dashboard, `jobs/new`, `jobs/[id]`, `profile`,
