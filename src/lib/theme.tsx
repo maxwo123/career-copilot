@@ -5,7 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
-  useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 
@@ -26,32 +26,40 @@ function applyClass(theme: Theme) {
   document.documentElement.classList.toggle("dark", dark);
 }
 
+let memoryTheme: Theme = "system";
+
+function readTheme(): Theme {
+  try {
+    const stored = localStorage.getItem("theme");
+    return stored === "light" || stored === "dark" ? stored : "system";
+  } catch { return memoryTheme; }
+}
+
+function subscribeTheme(callback: () => void) {
+  window.addEventListener("storage", callback);
+  window.addEventListener("career-theme-change", callback);
+  return () => {
+    window.removeEventListener("storage", callback);
+    window.removeEventListener("career-theme-change", callback);
+  };
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("system");
+  const theme = useSyncExternalStore(subscribeTheme, readTheme, () => "system" as Theme);
 
   useEffect(() => {
-    const stored = localStorage.getItem("theme") as Theme | null;
-    const initial = stored === "light" || stored === "dark" ? stored : "system";
-    setThemeState(initial);
-    applyClass(initial);
-  }, []);
-
-  // Listen for system preference changes when theme is "system".
-  useEffect(() => {
+    applyClass(theme);
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const handler = () => {
-      if ((localStorage.getItem("theme") ?? "system") === "system") {
-        applyClass("system");
-      }
-    };
+    const handler = () => { if (theme === "system") applyClass("system"); };
     mq.addEventListener("change", handler);
     return () => mq.removeEventListener("change", handler);
-  }, []);
+  }, [theme]);
 
   const setTheme = useCallback((t: Theme) => {
-    setThemeState(t);
-    localStorage.setItem("theme", t);
+    memoryTheme = t;
+    try { localStorage.setItem("theme", t); } catch {}
     applyClass(t);
+    window.dispatchEvent(new Event("career-theme-change"));
   }, []);
 
   return <Ctx.Provider value={{ theme, setTheme }}>{children}</Ctx.Provider>;
@@ -73,7 +81,8 @@ export function ThemeToggle() {
   return (
     <button
       onClick={() => setTheme(NEXT[theme])}
-      className="rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-stone-100 dark:hover:bg-stone-800"
+      type="button"
+      className="flex size-10 items-center justify-center rounded-md text-sm transition-colors hover:bg-stone-100 dark:hover:bg-stone-800"
       title={`Theme: ${theme}`}
       aria-label={`Toggle theme (current: ${theme})`}
     >

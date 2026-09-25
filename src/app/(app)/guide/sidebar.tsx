@@ -15,7 +15,7 @@ export function GuideSidebar({ groups }: { groups: NavGroup[] }) {
     <nav className="space-y-6">
       {groups.map((g) => (
         <div key={g.group}>
-          <div className="mb-1.5 px-2 text-xs font-semibold tracking-wider text-stone-400 uppercase">
+          <div className="mb-1.5 px-2 text-xs font-semibold tracking-wider text-stone-500 dark:text-stone-400 uppercase">
             {g.group}
           </div>
           <ul className="space-y-0.5">

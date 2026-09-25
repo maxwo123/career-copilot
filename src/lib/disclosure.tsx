@@ -21,6 +21,7 @@ export function Disclosure({
     <div className="rounded-lg border border-stone-200 dark:border-stone-700">
       <button
         type="button"
+        aria-expanded={open}
         onClick={() => setOpen(!open)}
         className="flex w-full items-baseline gap-2 rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-stone-50 dark:hover:bg-stone-700/60"
       >
@@ -32,19 +33,19 @@ export function Disclosure({
         >
           ▶
         </span>
-        <div className="flex min-w-0 flex-1 items-baseline gap-2">{header}</div>
+        <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-2">{header}</div>
       </button>
       {!open && preview && (
-        <div
+        <button type="button" aria-label="Expand details"
           onClick={() => setOpen(true)}
-          className="-mt-1.5 cursor-pointer px-3 pb-2.5 pl-8"
+          className="-mt-1.5 block w-full text-left cursor-pointer px-3 pb-2.5 pl-8"
         >
-          <div className="max-h-14 overflow-hidden text-xs leading-relaxed whitespace-pre-wrap text-stone-500 dark:text-stone-400 [mask-image:linear-gradient(to_bottom,black_35%,transparent_100%)]">
+          <div className="line-clamp-3 text-sm leading-relaxed whitespace-pre-wrap text-stone-500 dark:text-stone-400">
             {preview}
           </div>
-        </div>
+        </button>
       )}
-      {open && <div className="border-t border-stone-100 dark:border-stone-700/60 p-4">{children}</div>}
+      <div hidden={!open} className="border-t border-stone-100 dark:border-stone-700/60 p-4">{children}</div>
     </div>
   );
 }

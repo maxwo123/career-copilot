@@ -1,4 +1,8 @@
+import { applicationReturn } from "@/lib/mutation";
+import { CopyButton } from "@/lib/copy-button";
+import { ActionForm } from "@/lib/action-form";
 import Link from "next/link";
+import { DeleteButton } from "@/lib/delete-button";
 import { notFound } from "next/navigation";
 import {
   deleteDocument,
@@ -27,14 +31,17 @@ const summaryCls =
   "flex cursor-pointer items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm font-medium text-stone-800 dark:text-stone-200 transition-colors hover:bg-stone-50 dark:hover:bg-stone-700/60";
 
 export default async function JobPage({
-  params,
+  params, searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ returnTo?: string; edit?: string }>;
 }) {
   const { id } = await params;
+  const query = await searchParams;
+  const returnTo = applicationReturn(query.returnTo);
   const supabase = await createClient();
 
-  const [{ data: jobRow }, { data: docRows }] = await Promise.all([
+  const [{ data: jobRow }, { data: docRows, error: documentsError }] = await Promise.all([
     supabase.from("jobs").select("*").eq("id", id).maybeSingle(),
     supabase
       .from("documents")
@@ -51,8 +58,8 @@ export default async function JobPage({
       {/* Header */}
       <div>
         <Link
-          href="/applications"
-          className="text-xs font-medium text-stone-400 transition-colors hover:text-stone-600 dark:hover:text-stone-300"
+          href={returnTo}
+          className="text-xs font-medium text-stone-500 dark:text-stone-400 transition-colors hover:text-stone-600 dark:hover:text-stone-300"
         >
           ← Applications
         </Link>
@@ -83,7 +90,7 @@ export default async function JobPage({
 
       {/* Status + key dates */}
       <Card className="p-4">
-        <form
+        <ActionForm
           action={updateJobStatus.bind(null, job.id)}
           className="flex flex-wrap items-end gap-3"
         >
@@ -100,7 +107,7 @@ export default async function JobPage({
           <div className="ml-auto grid grid-cols-[auto_auto] gap-x-2 gap-y-0.5 text-xs">
             {job.deadline && (
               <>
-                <span className="text-right text-stone-400">Deadline</span>
+                <span className="text-right text-stone-500 dark:text-stone-400">Deadline</span>
                 <span className="text-stone-600 dark:text-stone-300 tabular-nums">
                   {formatDate(job.deadline)}
                 </span>
@@ -108,65 +115,54 @@ export default async function JobPage({
             )}
             {job.applied_at && (
               <>
-                <span className="text-right text-stone-400">Applied</span>
+                <span className="text-right text-stone-500 dark:text-stone-400">Applied</span>
                 <span className="text-stone-600 dark:text-stone-300 tabular-nums">
                   {formatDate(job.applied_at)}
                 </span>
               </>
             )}
-            <span className="text-right text-stone-400">Added</span>
+            <span className="text-right text-stone-500 dark:text-stone-400">Added</span>
             <span className="text-stone-600 dark:text-stone-300 tabular-nums">
               {formatDate(job.created_at)}
             </span>
           </div>
-        </form>
+        </ActionForm>
       </Card>
 
       {/* Documents */}
       <section>
         <SectionTitle count={documents.length}>Documents</SectionTitle>
-        {documents.length === 0 ? (
+        {documentsError ? <p role="alert" className="mt-3 text-red-700 dark:text-red-300">Documents couldn’t load. Refresh to try again.</p> : documents.length === 0 ? (
           <Card className="mt-3 border-dashed border-indigo-200 dark:border-indigo-800 bg-indigo-50/40 dark:bg-indigo-950/30 p-4 text-sm leading-relaxed text-stone-600 dark:text-stone-300 shadow-none">
             <p className="font-medium text-stone-800 dark:text-stone-200">
               No tailored documents yet.
             </p>
-            <p className="mt-1">
-              Open Claude Code and say something like:{" "}
-              <code className="rounded-md bg-white dark:bg-stone-800 px-1.5 py-0.5 font-mono text-xs">
-                Tailor a resume for the {job.company} job in Career Copilot
-              </code>{" "}
-              — Claude reads this job&apos;s description and your profile via
-              MCP, then saves the result here.
-            </p>
+            <p className="mt-2">Ask your connected assistant to tailor a resume using your profile and this job description. The saved document will appear here.</p>
+            <div className="mt-3"><CopyButton text={`Tailor a resume for ${job.title} at ${job.company} in Career Copilot (job ID: ${job.id}). Use my master profile and the saved job description. Save the result to this job.`} /></div>
           </Card>
         ) : (
           <Card className="mt-3 divide-y divide-stone-100 dark:divide-stone-700/60">
             {documents.map((d) => (
               <div
                 key={d.id}
-                className="grid grid-cols-[auto_1fr_auto_auto] items-center gap-3 px-4 py-2.5"
+                className="flex flex-wrap items-center gap-3 px-4 py-2.5"
               >
                 <Badge>{DOC_TYPE_LABELS[d.doc_type]}</Badge>
                 <Link
-                  href={`/documents/${d.id}`}
-                  className="min-w-0 truncate text-sm font-medium text-stone-900 dark:text-stone-100 hover:text-indigo-700 dark:hover:text-indigo-300"
+                  href={`/documents/${d.id}?${new URLSearchParams({ returnTo: `/jobs/${job.id}?${new URLSearchParams({ returnTo })}` })}`}
+                  className="min-w-0 flex-1 basis-40 break-words text-sm font-medium text-stone-900 dark:text-stone-100 hover:text-indigo-700 dark:hover:text-indigo-300"
                 >
                   {d.title || `${DOC_TYPE_LABELS[d.doc_type]} v${d.version}`}
-                  <span className="ml-1.5 text-xs font-normal text-stone-400 tabular-nums">
+                  <span className="ml-1.5 text-xs font-normal text-stone-500 dark:text-stone-400 tabular-nums">
                     v{d.version}
                   </span>
                 </Link>
-                <span className="text-xs text-stone-400 tabular-nums">
+                <span className="text-xs text-stone-500 dark:text-stone-400 tabular-nums">
                   {formatDate(d.created_at)}
                 </span>
-                <form action={deleteDocument.bind(null, d.id, job.id)}>
-                  <button
-                    className="rounded p-1 text-stone-300 dark:text-stone-600 transition-colors hover:text-red-500"
-                    title="Delete document"
-                  >
-                    ✕
-                  </button>
-                </form>
+                <ActionForm action={deleteDocument.bind(null, d.id, job.id)}>
+                  <DeleteButton label="Delete document" message="Delete this document? This cannot be undone." />
+                </ActionForm>
               </div>
             ))}
           </Card>
@@ -174,18 +170,18 @@ export default async function JobPage({
       </section>
 
       {/* Job description */}
-      <Card>
-        <details open={!job.jd_text}>
+      {job.jd_text ? <Card>
+        <details>
           <summary className={summaryCls}>
             <span>
               Job description{" "}
               {job.jd_text ? (
-                <span className="font-normal text-stone-400 tabular-nums">
+                <span className="font-normal text-stone-500 dark:text-stone-400 tabular-nums">
                   · {job.jd_text.length.toLocaleString()} chars
                 </span>
               ) : (
                 <span className="font-normal text-amber-600 dark:text-amber-500">
-                  — missing! Paste it below so Claude can tailor documents.
+                  — add the description in the editor below.
                 </span>
               )}
             </span>
@@ -193,23 +189,23 @@ export default async function JobPage({
           </summary>
           {job.jd_text ? (
             <div className="border-t border-stone-100 dark:border-stone-700/60 p-4">
-              <pre className="max-h-96 overflow-auto font-mono text-xs leading-relaxed whitespace-pre-wrap text-stone-600 dark:text-stone-300">
+              <pre tabIndex={0} className="max-h-96 overflow-auto font-mono text-xs leading-relaxed whitespace-pre-wrap text-stone-600 dark:text-stone-300">
                 {job.jd_text}
               </pre>
             </div>
           ) : null}
         </details>
-      </Card>
+      </Card> : <a href="#job-editor" className="block rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-medium text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">Add the missing job description in the editor below →</a>}
 
       {/* Edit details */}
       <Card>
-        <details>
+        <details id="job-editor" open={!job.jd_text || query.edit === "description"}>
           <summary className={summaryCls}>
             <span>Edit details &amp; notes</span>
             <span className="text-xs text-stone-300 dark:text-stone-600">▾</span>
           </summary>
-          <form
-            action={updateJobDetails.bind(null, job.id)}
+          <ActionForm
+            cancel action={updateJobDetails.bind(null, job.id)}
             className="space-y-4 border-t border-stone-100 dark:border-stone-700/60 p-4"
           >
             <div className="grid gap-4 sm:grid-cols-3">
@@ -231,14 +227,14 @@ export default async function JobPage({
                 name="jd_text"
                 rows={10}
                 defaultValue={job.jd_text}
-                className="font-mono text-xs"
+                className="text-sm leading-6"
               />
             </Field>
             <Field label="Notes">
               <Textarea name="notes" rows={3} defaultValue={job.notes} />
             </Field>
             <Button>Save changes</Button>
-          </form>
+          </ActionForm>
         </details>
       </Card>
 
@@ -253,11 +249,10 @@ export default async function JobPage({
         </section>
       )}
 
-      <form action={deleteJob.bind(null, job.id)} className="pt-2">
-        <Button variant="danger" size="sm">
-          Delete this job and all its documents
-        </Button>
-      </form>
+      <ActionForm action={deleteJob.bind(null, job.id)} className="pt-2">
+        <input type="hidden" name="returnTo" value={returnTo} />
+        <DeleteButton label="Delete this job and all its documents" message="Delete this job and all its documents? This cannot be undone." />
+      </ActionForm>
     </div>
   );
 }

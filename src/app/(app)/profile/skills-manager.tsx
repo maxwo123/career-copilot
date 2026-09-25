@@ -7,6 +7,8 @@ import {
   setSkillList,
 } from "@/app/actions";
 import type { ProfileEntry } from "@/lib/types";
+import { useAutosave } from "@/lib/use-autosave";
+import { SaveStatus } from "@/lib/save-status";
 import { Button, Card, Input, SectionTitle } from "@/lib/ui";
 
 // Split a stored skill list on commas that are OUTSIDE parentheses, so
@@ -35,12 +37,14 @@ function SkillCategory({ entry }: { entry: ProfileEntry }) {
   const [draft, setDraft] = useState("");
   const [pending, startTransition] = useTransition();
 
-  const persist = (next: string[]) => {
-    setSkills(next);
-    startTransition(async () => {
-      await setSkillList(entry.id, next);
-    });
-  };
+  const autosave = useAutosave<string[]>((next) => setSkillList(entry.id, next));
+  const [deleteError, setDeleteError] = useState("");
+  const [source, setSource] = useState(entry.description);
+  if (source !== entry.description) {
+    setSource(entry.description);
+    if (!draft && autosave.status !== "saving" && autosave.status !== "error") setSkills(splitSkills(entry.description));
+  }
+  const persist = (next: string[]) => { setSkills(next); autosave.persist(next); };
 
   const addDraft = () => {
     const value = draft.trim();
@@ -63,7 +67,7 @@ function SkillCategory({ entry }: { entry: ProfileEntry }) {
         <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100">
           {entry.title || "(untitled)"}
         </h3>
-        <span className="text-xs text-stone-400 tabular-nums">
+        <span className="text-xs text-stone-500 dark:text-stone-400 tabular-nums">
           {skills.length} skill{skills.length === 1 ? "" : "s"}
           {pending ? " · saving..." : ""}
         </span>
@@ -76,17 +80,24 @@ function SkillCategory({ entry }: { entry: ProfileEntry }) {
               )
             ) {
               startTransition(async () => {
-                await deleteProfileEntry(entry.id);
+                try {
+                  const result = await deleteProfileEntry(entry.id);
+                  if (result.error) setDeleteError(result.error);
+                } catch { setDeleteError("Couldn’t delete this category. Try again."); }
               });
             }
           }}
-          className="ml-auto text-xs font-medium text-stone-300 dark:text-stone-600 transition-colors hover:text-red-500"
+          className="ml-auto text-xs font-medium text-stone-600 dark:text-stone-400 transition-colors hover:text-red-500"
+          disabled={pending || autosave.status === "saving"}
+          aria-label={`Delete ${entry.title} category`}
           title="Delete category"
         >
           Delete
         </button>
       </div>
 
+      <SaveStatus {...autosave} />
+      {deleteError && <p role="alert" className="text-sm text-red-700 dark:text-red-300">{deleteError}</p>}
       <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
         {skills.map((skill) => (
           <span
@@ -96,7 +107,8 @@ function SkillCategory({ entry }: { entry: ProfileEntry }) {
             {skill}
             <button
               onClick={() => remove(skill)}
-              className="rounded-full px-0.5 text-indigo-300 transition-colors hover:text-red-500"
+              className="min-h-6 min-w-6 rounded-full px-0.5 text-indigo-700 dark:text-indigo-300 transition-colors hover:text-red-500"
+              aria-label={`Remove ${skill}`}
               title={`Remove ${skill}`}
             >
               ×
@@ -108,6 +120,7 @@ function SkillCategory({ entry }: { entry: ProfileEntry }) {
           <span className="inline-flex items-center gap-1.5">
             <Input
               autoFocus
+              aria-label="New skill"
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={(e) => {
@@ -140,7 +153,7 @@ function SkillCategory({ entry }: { entry: ProfileEntry }) {
                 setDraft("");
                 setAdding(false);
               }}
-              className="px-1 text-xs font-medium text-stone-400 transition-colors hover:text-stone-600 dark:hover:text-stone-300"
+              className="px-1 text-xs font-medium text-stone-600 dark:text-stone-400 transition-colors hover:text-stone-600 dark:hover:text-stone-300"
             >
               Done
             </button>
@@ -172,7 +185,8 @@ export function SkillsManager({ entries }: { entries: ProfileEntry[] }) {
     }
     setError("");
     startTransition(async () => {
-      const res = await addSkillCategory(value);
+      let res;
+      try { res = await addSkillCategory(value); } catch { setError("Couldn’t create this category. Try again."); return; }
       if (res.error) setError(res.error);
       else {
         setName("");
@@ -182,7 +196,7 @@ export function SkillsManager({ entries }: { entries: ProfileEntry[] }) {
   };
 
   return (
-    <Card className="p-5">
+    <section id="skills"><Card className="p-5">
       <SectionTitle
         count={entries.length}
         action={
@@ -201,9 +215,10 @@ export function SkillsManager({ entries }: { entries: ProfileEntry[] }) {
       </SectionTitle>
 
       {creating && (
-        <div className="mt-4 flex items-center gap-2">
+        <div className="mt-4 flex flex-wrap items-center gap-2">
           <Input
             autoFocus
+            aria-label="Category name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => {
@@ -214,7 +229,7 @@ export function SkillsManager({ entries }: { entries: ProfileEntry[] }) {
               if (e.key === "Escape") setCreating(false);
             }}
             placeholder='Category name, e.g. "Web Development"'
-            className="w-64"
+            className="min-w-0 flex-1 basis-48"
           />
           <Button size="md" onClick={createCategory} disabled={pending}>
             Create
@@ -222,13 +237,13 @@ export function SkillsManager({ entries }: { entries: ProfileEntry[] }) {
           <Button variant="ghost" size="md" onClick={() => setCreating(false)}>
             Cancel
           </Button>
-          {error && <span className="text-xs text-red-600 dark:text-red-400">{error}</span>}
+          {error && <span role="alert" className="text-xs text-red-600 dark:text-red-400">{error}</span>}
         </div>
       )}
 
       <div className="mt-4 space-y-3">
         {entries.length === 0 && !creating && (
-          <p className="text-sm text-stone-400">
+          <p className="text-sm text-stone-500 dark:text-stone-400">
             No skill categories yet — create one to start adding skills.
           </p>
         )}
@@ -236,6 +251,6 @@ export function SkillsManager({ entries }: { entries: ProfileEntry[] }) {
           <SkillCategory key={entry.id} entry={entry} />
         ))}
       </div>
-    </Card>
+    </Card></section>
   );
 }

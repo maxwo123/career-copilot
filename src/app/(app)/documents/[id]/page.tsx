@@ -1,3 +1,4 @@
+import { CopyButton } from "@/lib/copy-button";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { marked } from "marked";
@@ -8,11 +9,15 @@ import { Badge, Card, formatDate } from "@/lib/ui";
 import { PrintButton } from "./print-button";
 
 export default async function DocumentPage({
-  params,
+  params, searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ returnTo?: string }>;
 }) {
   const { id } = await params;
+  const query = await searchParams;
+  const requested = query.returnTo ?? "";
+  const returnTo = requested === "/documents" || requested.startsWith("/documents?") || /^\/jobs\/[a-zA-Z0-9-]+(?:\?|$)/.test(requested) ? requested : "/documents";
   const supabase = await createClient();
 
   const { data: docRow } = await supabase
@@ -38,12 +43,12 @@ export default async function DocumentPage({
   return (
     <div className="mx-auto max-w-3xl">
       <div className="no-print mb-6">
-        {job && (
+        {(
           <Link
-            href={`/jobs/${job.id}`}
-            className="text-xs font-medium text-stone-400 transition-colors hover:text-stone-600 dark:hover:text-stone-300"
+            href={returnTo}
+            className="text-xs font-medium text-stone-500 dark:text-stone-400 transition-colors hover:text-stone-600 dark:hover:text-stone-300"
           >
-            ← {job.title} · {job.company}
+            ← {returnTo.startsWith("/jobs/") && job ? `${job.title} · ${job.company}` : "Documents"}
           </Link>
         )}
         <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
@@ -51,18 +56,19 @@ export default async function DocumentPage({
             <h1 className="text-2xl font-semibold tracking-tight text-stone-900 dark:text-stone-100">
               {doc.title || DOC_TYPE_LABELS[doc.doc_type]}
             </h1>
+            {job && <Link href={`/jobs/${job.id}`} className="mt-2 inline-block text-sm text-indigo-700 dark:text-indigo-300">{job.title} · {job.company} →</Link>}
             <div className="mt-1.5 flex items-center gap-2">
               <Badge>{DOC_TYPE_LABELS[doc.doc_type]}</Badge>
-              <span className="text-xs text-stone-400 tabular-nums">
+              <span className="text-xs text-stone-500 dark:text-stone-400 tabular-nums">
                 v{doc.version} · {formatDate(doc.created_at)}
               </span>
             </div>
           </div>
-          <PrintButton />
+          <div className="flex flex-wrap gap-2"><CopyButton text={doc.content_md} label="Copy Markdown" /><PrintButton /></div>
         </div>
       </div>
 
-      <Card className="print-sheet p-10 shadow-sm">
+      <Card className="print-sheet overflow-hidden p-5 sm:p-10 shadow-sm">
         <div
           className="doc-prose"
           // Content is authored by the account owner (directly or via their
@@ -77,7 +83,7 @@ export default async function DocumentPage({
             <span>Raw Markdown</span>
             <span className="text-xs text-stone-300 dark:text-stone-600">▾</span>
           </summary>
-          <pre className="max-h-96 overflow-auto border-t border-stone-100 dark:border-stone-700/60 p-4 font-mono text-xs leading-relaxed whitespace-pre-wrap text-stone-600 dark:text-stone-300">
+          <pre tabIndex={0} className="max-h-96 overflow-auto border-t border-stone-100 dark:border-stone-700/60 p-4 font-mono text-xs leading-relaxed whitespace-pre-wrap text-stone-600 dark:text-stone-300">
             {doc.content_md}
           </pre>
         </details>

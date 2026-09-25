@@ -1,4 +1,8 @@
+import { calendarDaysUntil } from "@/lib/mutation";
+import { ActionForm } from "@/lib/action-form";
+import { JobList } from "./job-list";
 import Link from "next/link";
+import { DeleteButton } from "@/lib/delete-button";
 import {
   addTimelineEvent,
   deleteTimelineEvent,
@@ -13,13 +17,11 @@ import {
   Field,
   Input,
   PageHeader,
-  STATUS_LABELS,
   SectionTitle,
-  StatusPill,
+  Select,
   Textarea,
   buttonCls,
   cn,
-  daysUntil,
   formatDate,
 } from "@/lib/ui";
 
@@ -43,9 +45,18 @@ function windowState(e: TimelineEvent): "past" | "open" | "upcoming" {
   return "upcoming";
 }
 
-export default async function ApplicationsPage() {
+export default async function ApplicationsPage({ searchParams }: {
+  searchParams: Promise<{ q?: string; status?: string; view?: string; window?: string }>;
+}) {
+  const params = await searchParams;
+  const query = typeof params.q === "string" ? params.q.trim() : "";
+  const status = JOB_STATUSES.includes(params.status as JobStatus) ? params.status as JobStatus : "";
+  const view = params.view === "timeline" ? "timeline" : "jobs";
+  const windowFilter = ["open", "upcoming", "past"].includes(params.window ?? "") ? params.window : "";
+  const returnTo = `/applications?${new URLSearchParams(view === "timeline" ? { view, ...(windowFilter ? { window: windowFilter } : {}) } : { view, ...(query ? { q: query } : {}), ...(status ? { status } : {}) })}`;
+  const jobHref = (id: string) => `/jobs/${id}?${new URLSearchParams({ returnTo })}`;
   const supabase = await createClient();
-  const [{ data: jobRows }, { data: eventRows }] = await Promise.all([
+  const [{ data: jobRows, error: jobsError }, { data: eventRows, error: eventsError }] = await Promise.all([
     supabase.from("jobs").select("*").order("created_at", { ascending: false }),
     supabase
       .from("timeline_events")
@@ -55,20 +66,15 @@ export default async function ApplicationsPage() {
   ]);
   const jobs = (jobRows ?? []) as Job[];
   const events = (eventRows ?? []) as TimelineEvent[];
-
-  const byStatus = new Map<JobStatus, Job[]>(
-    JOB_STATUSES.map((s) => [s, jobs.filter((j) => j.status === s)])
-  );
-
   const dueSoon = jobs
     .filter((j) => j.status === "saved" && j.deadline)
-    .map((j) => ({ job: j, days: daysUntil(j.deadline)! }))
+    .map((j) => ({ job: j, days: calendarDaysUntil(j.deadline!) }))
     .filter((x) => x.days !== null && x.days <= 10)
     .sort((a, b) => a.days - b.days);
 
   // Group timeline events into ordered month buckets; undated go last.
   const groups: { label: string; events: TimelineEvent[] }[] = [];
-  for (const e of events) {
+  for (const e of events.filter((event) => !windowFilter || windowState(event) === windowFilter)) {
     const label = monthKey(e.starts_on);
     const last = groups[groups.length - 1];
     if (last && last.label === label) last.events.push(e);
@@ -81,46 +87,30 @@ export default async function ApplicationsPage() {
     <div className="space-y-10">
       <PageHeader
         title="Applications"
-        description="Everything application-related in one place: your pipeline, upcoming deadlines, tracked jobs, and the timeline of when each company's application window opens."
+        description="Find your next opportunity and stay ahead of application deadlines."
       />
+      {(jobsError || eventsError) && <p role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">Some applications couldn’t load. Refresh the page to try again.</p>}
 
-      {/* Pipeline stats */}
-      <Card className="grid grid-cols-3 overflow-hidden sm:grid-cols-6 sm:divide-x sm:divide-stone-100 dark:sm:divide-stone-700/60">
-        {JOB_STATUSES.map((s) => {
-          const count = byStatus.get(s)!.length;
-          return (
-            <div key={s} className="px-4 py-3">
-              <div
-                className={cn(
-                  "text-xl font-semibold tabular-nums",
-                  count > 0 ? "text-stone-900 dark:text-stone-100" : "text-stone-300 dark:text-stone-600"
-                )}
-              >
-                {count}
-              </div>
-              <div className="mt-0.5 text-xs font-medium text-stone-500 dark:text-stone-400">
-                {STATUS_LABELS[s]}
-              </div>
-            </div>
-          );
-        })}
-      </Card>
-
-      {dueSoon.length > 0 && (
-        <section>
-          <SectionTitle count={dueSoon.length}>Deadlines coming up</SectionTitle>
+      <nav aria-label="Application views" className="flex gap-2 border-b border-stone-200 pb-3 dark:border-stone-700">
+        <Link href="/applications?view=jobs" aria-current={view === "jobs" ? "page" : undefined} className={buttonCls(view === "jobs" ? "primary" : "ghost")}>Tracked jobs</Link>
+        <Link href="/applications?view=timeline" aria-current={view === "timeline" ? "page" : undefined} className={buttonCls(view === "timeline" ? "primary" : "ghost")}>Recruiting timeline</Link>
+      </nav>
+      {view === "jobs" && <>
+      {[true, false].map((overdue) => { const deadlines = dueSoon.filter(({ days }) => overdue ? days < 0 : days >= 0); return deadlines.length > 0 && (
+        <section key={String(overdue)}>
+          <SectionTitle count={deadlines.length}>{overdue ? "Overdue applications" : "Deadlines coming up"}</SectionTitle>
           <Card className="mt-3 divide-y divide-amber-100 dark:divide-amber-900/50 border-amber-200 dark:border-amber-900 bg-amber-50/60 dark:bg-amber-950/30">
-            {dueSoon.map(({ job, days }) => (
+            {deadlines.map(({ job, days }) => (
               <div
                 key={job.id}
                 className="flex items-baseline justify-between gap-4 px-4 py-2.5 text-sm"
               >
                 <Link
-                  href={`/jobs/${job.id}`}
+                  href={jobHref(job.id)}
                   className="min-w-0 truncate font-medium text-amber-950 dark:text-amber-200 hover:text-indigo-700 dark:hover:text-indigo-300"
                 >
                   {job.title}
-                  <span className="font-normal text-amber-800/70 dark:text-amber-300/70">
+                  <span className="font-normal text-amber-900 dark:text-amber-200">
                     {" "}
                     · {job.company}
                   </span>
@@ -137,82 +127,24 @@ export default async function ApplicationsPage() {
             ))}
           </Card>
         </section>
-      )}
+      ); })}
 
-      {/* Tracked jobs */}
-      {jobs.length === 0 ? (
-        <Card className="border-dashed p-12 text-center shadow-none">
-          <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-100">No jobs yet</h2>
-          <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-stone-500 dark:text-stone-400">
-            Add your first job posting (link + pasted description), fill out
-            your{" "}
-            <Link
-              href="/profile"
-              className="font-medium text-indigo-600 dark:text-indigo-400 underline underline-offset-2"
-            >
-              profile
-            </Link>
-            , then ask Claude Code to tailor a resume for it.
-          </p>
-          <Link href="/jobs/new" className={buttonCls("primary", "md", "mt-6")}>
-            + Add your first job
-          </Link>
-        </Card>
-      ) : (
-        <div className="space-y-8">
-          {JOB_STATUSES.filter((s) => byStatus.get(s)!.length > 0).map((s) => (
-            <section key={s}>
-              <SectionTitle count={byStatus.get(s)!.length}>
-                {STATUS_LABELS[s]}
-              </SectionTitle>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                {byStatus.get(s)!.map((job) => (
-                  <Link
-                    key={job.id}
-                    href={`/jobs/${job.id}`}
-                    className="group rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 p-4 shadow-xs transition hover:border-indigo-300 hover:shadow-sm"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="truncate font-medium text-stone-900 dark:text-stone-100 group-hover:text-indigo-700 dark:group-hover:text-indigo-300">
-                          {job.title}
-                        </div>
-                        <div className="mt-0.5 truncate text-sm text-stone-500 dark:text-stone-400">
-                          {job.company}
-                          {job.location ? ` · ${job.location}` : ""}
-                        </div>
-                      </div>
-                      <StatusPill status={job.status} />
-                    </div>
-                    <div className="mt-3 flex items-center gap-3 text-xs text-stone-400 tabular-nums">
-                      {job.deadline && <span>Due {formatDate(job.deadline)}</span>}
-                      {job.applied_at && (
-                        <span>Applied {formatDate(job.applied_at)}</span>
-                      )}
-                      {!job.deadline && !job.applied_at && (
-                        <span>Added {formatDate(job.created_at)}</span>
-                      )}
-                      {!job.jd_text && (
-                        <span className="font-medium text-amber-600 dark:text-amber-500">
-                          No JD pasted
-                        </span>
-                      )}
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
-      )}
+      {!jobsError && <JobList key={`${query}:${status}`} jobs={jobs} initialQuery={query} initialStatus={status} />}
 
+      </>}
       {/* Application-window timeline */}
-      <section>
+      {view === "timeline" && <section>
+        <form action="/applications" method="get" className="mb-5 flex flex-wrap items-end gap-3">
+          <input type="hidden" name="view" value="timeline" />
+          <Field label="Recruiting window"><Select name="window" defaultValue={windowFilter}><option value="">All windows</option><option value="open">Open now</option><option value="upcoming">Upcoming</option><option value="past">Past</option></Select></Field>
+          <Button>Apply filter</Button>
+        </form>
+        {groups.length === 0 && <p className="mb-4 text-sm text-stone-600 dark:text-stone-400">No recruiting windows match this view. Add an event below or change the filter.</p>}
         <SectionTitle count={events.length}>Application timeline</SectionTitle>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-stone-500 dark:text-stone-400">
           When each company&apos;s application window opens — so you apply in
           week one, not week six. Ask your AI to research companies and import
-          their timelines via MCP.
+          their timelines through your connected assistant.
         </p>
 
         {events.length > 0 && (
@@ -235,7 +167,7 @@ export default async function ApplicationsPage() {
                   <h2
                     className={cn(
                       "text-xs font-semibold tracking-wider uppercase",
-                      groupPast ? "text-stone-400" : "text-stone-600 dark:text-stone-300"
+                      groupPast ? "text-stone-500" : "text-stone-600 dark:text-stone-300"
                     )}
                   >
                     {group.label}
@@ -246,7 +178,7 @@ export default async function ApplicationsPage() {
                       return (
                         <Card
                           key={e.id}
-                          className={cn("p-4", state === "past" && "opacity-55")}
+                          className={cn("p-4", state === "past" && "border-dashed")}
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
@@ -267,7 +199,7 @@ export default async function ApplicationsPage() {
                                   </span>
                                 )}
                                 {e.ends_on && state !== "past" && (
-                                  <span className="text-stone-400">
+                                  <span className="text-stone-500">
                                     closes {formatDate(e.ends_on)}
                                   </span>
                                 )}
@@ -298,26 +230,25 @@ export default async function ApplicationsPage() {
                           <div className="mt-3 flex items-center gap-2">
                             {e.job_id ? (
                               <Link
-                                href={`/jobs/${e.job_id}`}
+                                href={jobHref(e.job_id)}
                                 className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300"
                               >
                                 View tracked job →
                               </Link>
                             ) : (
-                              <form action={trackTimelineEvent.bind(null, e.id)}>
+                              <ActionForm action={trackTimelineEvent.bind(null, e.id)}>
+                                <input type="hidden" name="returnTo" value={returnTo} />
                                 <Button variant="secondary" size="sm">
                                   Track as job
                                 </Button>
-                              </form>
+                              </ActionForm>
                             )}
-                            <form
+                            <ActionForm
                               action={deleteTimelineEvent.bind(null, e.id)}
                               className="ml-auto"
                             >
-                              <Button variant="danger" size="sm">
-                                Delete
-                              </Button>
-                            </form>
+                              <DeleteButton message={`Delete the timeline event for ${e.company}? This cannot be undone.`} />
+                            </ActionForm>
                           </div>
                         </Card>
                       );
@@ -333,10 +264,10 @@ export default async function ApplicationsPage() {
           <details>
             <summary className="flex cursor-pointer items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm font-medium text-stone-800 dark:text-stone-200 transition-colors hover:bg-stone-50 dark:hover:bg-stone-700/60">
               <span>+ Add timeline event manually</span>
-              <span className="text-xs text-stone-300 dark:text-stone-600">▾</span>
+              <span className="text-xs text-stone-500 dark:text-stone-400">▾</span>
             </summary>
-            <form
-              action={addTimelineEvent}
+            <ActionForm
+              resetOnSuccess action={addTimelineEvent}
               className="space-y-4 border-t border-stone-100 dark:border-stone-700/60 p-4"
             >
               <div className="grid gap-4 sm:grid-cols-2">
@@ -368,10 +299,10 @@ export default async function ApplicationsPage() {
                 <Textarea name="notes" rows={3} />
               </Field>
               <Button>Add event</Button>
-            </form>
+            </ActionForm>
           </details>
         </Card>
-      </section>
+      </section>}
     </div>
   );
 }

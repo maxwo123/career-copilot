@@ -17,7 +17,8 @@ export default function GuideLayout({
   return (
     <div className="flex flex-col gap-8 md:flex-row md:gap-12">
       <aside className="shrink-0 md:sticky md:top-20 md:w-52 md:self-start">
-        <GuideSidebar groups={groups} />
+        <details className="md:hidden rounded-xl border border-stone-200 p-4 dark:border-stone-700"><summary className="cursor-pointer font-medium">Browse getting started</summary><div className="mt-4"><GuideSidebar groups={groups} /></div></details>
+        <div className="hidden md:block"><GuideSidebar groups={groups} /></div>
       </aside>
       <div className="min-w-0 max-w-2xl flex-1">{children}</div>
     </div>

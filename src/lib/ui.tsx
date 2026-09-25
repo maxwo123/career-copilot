@@ -41,7 +41,7 @@ const STATUS_META: Record<JobStatus, { label: string; pill: string; dot: string 
   },
   withdrawn: {
     label: "Withdrawn",
-    pill: "bg-stone-50 dark:bg-stone-900 text-stone-400 border-stone-200 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-400 dark:border-stone-600",
+    pill: "bg-stone-50 dark:bg-stone-900 text-stone-600 border-stone-200 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-400 dark:border-stone-600",
     dot: "bg-stone-300",
   },
 };
@@ -75,7 +75,7 @@ const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
   secondary:
     "border border-stone-300 bg-white font-medium text-stone-700 dark:text-stone-300 shadow-xs hover:border-stone-400 hover:text-stone-900 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-200 dark:hover:border-stone-500 dark:hover:text-stone-100",
   ghost: "font-medium text-stone-500 hover:bg-stone-100 hover:text-stone-800 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-200",
-  danger: "font-medium text-stone-400 hover:bg-red-50 hover:text-red-600 dark:text-stone-500 dark:hover:bg-red-950 dark:hover:text-red-400",
+  danger: "font-medium text-stone-600 hover:bg-red-50 hover:text-red-600 dark:text-stone-400 dark:hover:bg-red-950 dark:hover:text-red-400",
 };
 
 const BUTTON_SIZES: Record<ButtonSize, string> = {
@@ -154,7 +154,7 @@ export function Field({
     <label className={cn("block", className)}>
       <span className="mb-1.5 flex items-baseline justify-between gap-2 text-[13px] font-medium text-stone-700 dark:text-stone-300">
         <span>{label}</span>
-        {hint && <span className="text-xs font-normal text-stone-400">{hint}</span>}
+        {hint && <span className="text-xs font-normal text-stone-400 dark:text-stone-500">{hint}</span>}
       </span>
       {children}
     </label>
@@ -220,7 +220,7 @@ export function SectionTitle({
         {children}
       </h2>
       {typeof count === "number" && (
-        <span className="rounded-full bg-stone-200/70 dark:bg-stone-700 px-1.5 py-px text-[11px] font-medium text-stone-500 dark:text-stone-400 tabular-nums">
+        <span className="rounded-full bg-stone-200/70 dark:bg-stone-700 px-1.5 py-px text-[11px] font-medium text-stone-600 dark:text-stone-300 tabular-nums">
           {count}
         </span>
       )}

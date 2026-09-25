@@ -1,3 +1,4 @@
+import { CopyButton } from "@/lib/copy-button";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -62,9 +63,9 @@ function Code({ children }: { children: ReactNode }) {
 
 function CodeBlock({ children }: { children: string }) {
   return (
-    <pre className="mb-3 overflow-x-auto rounded-lg border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap text-stone-700 dark:text-stone-300">
+    <div className="mb-4"><div className="mb-2"><CopyButton text={children} label="Copy code" /></div><pre tabIndex={0} className="mb-3 overflow-x-auto rounded-lg border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap text-stone-700 dark:text-stone-300">
       {children}
-    </pre>
+    </pre></div>
   );
 }
 
@@ -89,6 +90,7 @@ function Prompt({ children }: { children: string }) {
       <code className="rounded-md bg-stone-100 dark:bg-stone-800 px-1.5 py-0.5 font-mono text-xs leading-relaxed">
         {children}
       </code>
+      <div className="mt-2"><CopyButton text={children} /></div>
     </li>
   );
 }

@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 // /api/mcp authenticates via MCP_TOKEN (bearer header) instead of a session.
-const PUBLIC_PATHS = ["/login", "/api/mcp"];
+const PUBLIC_PATHS = ["/login", "/forgot-password", "/reset-password", "/auth/callback", "/api/mcp"];
 
 export default async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -31,16 +31,18 @@ export default async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
-  const isPublic = PUBLIC_PATHS.some((p) => pathname.startsWith(p));
+  const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
+    url.search = "";
     return NextResponse.redirect(url);
   }
   if (user && pathname === "/login") {
     const url = request.nextUrl.clone();
     url.pathname = "/";
+    url.search = "";
     return NextResponse.redirect(url);
   }
 

@@ -1,5 +1,7 @@
 # Career Copilot
 
+When prompted to create a plan, always create a markdown file so I can easily edit
+
 Single-user career-growth tracker where **your own AI tools are the engine**
 — the app itself has no AI and holds no LLM API keys, so there is nothing to
 meter or subscribe to. Any MCP-capable assistant (Claude, ChatGPT, Gemini,
@@ -62,8 +64,25 @@ into the app where you view and print them.
 2. `cp .env.example .env.local` and fill in the Supabase URL/keys and an
    `MCP_TOKEN` (any long random string).
 3. `npm install && npm run dev`, open http://localhost:3000, click
-   **"First time? Create the account"** once — that's your login.
+   **"First time here? Set up your account"** once — that's your login.
 4. Set the same four env vars on Vercel and deploy.
+
+## Password recovery
+
+Choose **Forgot password?** on the login page, enter your account email, and
+open the emailed link in the **same browser**. Choose and confirm a new
+password (at least 8 characters), then sign in again.
+
+In Supabase **Authentication → URL Configuration**, set the Site URL to the
+app’s production origin and allow the exact callback URL:
+`https://career-copilot-lemon-theta.vercel.app/auth/callback`.
+For local development, add the callback for the origin you use, such as
+`http://localhost:3000/auth/callback`. The standard Supabase recovery email
+template works with this PKCE flow. Email delivery uses the project’s configured
+mail service; the built-in service has delivery restrictions and rate limits.
+
+Run `node --test tests/auth.test.mjs` for the recovery regression tests.
+See [the UX review](docs/ux-review.md) for the UI changes and verification scope.
 
 ## Connecting your AI (any MCP-capable tool)
 
@@ -186,7 +205,17 @@ work in a fresh chat without re-discovering it.
 - `src/app/actions.ts` / `src/app/auth-actions.ts` — server actions
   (jobs/profile CRUD; single-user auth bootstrap).
 - `src/app/(app)/` — dashboard, `jobs/new`, `jobs/[id]`, `profile`,
-  `documents/[id]` (print-CSS document viewer).
+  `applications`, `documents` (searchable library), and `documents/[id]` (print-CSS document viewer).
 - `src/lib/` — Supabase clients (`client`/`server`/`service`), shared
   `types.ts`, UI helpers (`ui.tsx`).
-- `src/proxy.ts` — auth middleware (public paths: `/login`, `/api/mcp`).
+- `src/proxy.ts` — auth middleware (public paths: `/login`, `/forgot-password`, `/auth/callback`, `/api/mcp`).
+
+### Workspace UX and verification
+
+Dashboard brings together open actions, application deadlines, and recent documents.
+Applications has URL-based tracked-job and recruiting-timeline views. Documents supports
+title, type, and related-job filters, including standalone briefings. Profile sections
+have explicit Save/Cancel and entry ordering; notes and skills autosave with status and retry.
+
+Run `npm test`, `npm run lint`, and `npm run build -- --webpack` for regression checks.
+See `docs/ux-review.md` for design decisions and browser verification scope.

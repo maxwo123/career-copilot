@@ -20,7 +20,7 @@ export default async function GuideDocPage({
 
   return (
     <article>
-      <div className="text-xs font-semibold tracking-wider text-stone-400 uppercase">
+      <div className="text-xs font-semibold tracking-wider text-stone-500 dark:text-stone-400 uppercase">
         {doc.group}
       </div>
       <h1 className="mt-1.5 text-2xl font-semibold tracking-tight text-stone-900 dark:text-stone-100">

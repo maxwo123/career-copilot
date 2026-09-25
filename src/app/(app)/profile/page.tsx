@@ -1,8 +1,10 @@
+import { ActionForm } from "@/lib/action-form";
 import {
   addProfileEntry,
   deleteProfileEntry,
   saveProfileHeader,
   updateProfileEntry,
+  moveProfileEntry,
 } from "@/app/actions";
 import { createClient } from "@/lib/supabase/server";
 import { Disclosure } from "@/lib/disclosure";
@@ -19,18 +21,19 @@ import {
 } from "@/lib/ui";
 import { SkillsManager } from "./skills-manager";
 
-function EntryFields({ entry }: { entry?: ProfileEntry }) {
+function EntryFields({ entry, section }: { entry?: ProfileEntry; section: Section }) {
+  const labels = section === "education" ? ["Degree / qualification", "School / university"] : section === "projects" ? ["Project name", "Team / organization"] : section === "certifications" ? ["Certification", "Issuing organization"] : ["Role / title", "Organization"];
   return (
     <>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Title">
+        <Field label={labels[0]}>
           <Input
             name="title"
             defaultValue={entry?.title}
-            placeholder="B.S. Computer Science / Software Intern / Project name"
+            placeholder={section === "education" ? "B.S. Biology" : section === "projects" ? "Research project name" : section === "certifications" ? "Certification name" : "Research Intern"}
           />
         </Field>
-        <Field label="Organization">
+        <Field label={labels[1]}>
           <Input
             name="organization"
             defaultValue={entry?.organization}
@@ -38,7 +41,7 @@ function EntryFields({ entry }: { entry?: ProfileEntry }) {
           />
         </Field>
       </div>
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Location">
           <Input name="location" defaultValue={entry?.location} />
         </Field>
@@ -49,13 +52,7 @@ function EntryFields({ entry }: { entry?: ProfileEntry }) {
             placeholder="Aug 2024 – May 2028"
           />
         </Field>
-        <Field label="Sort order">
-          <Input
-            name="sort_order"
-            type="number"
-            defaultValue={entry?.sort_order ?? 0}
-          />
-        </Field>
+
       </div>
       <Field label="Details" hint="one bullet per line">
         <Textarea name="description" rows={4} defaultValue={entry?.description} />
@@ -66,7 +63,7 @@ function EntryFields({ entry }: { entry?: ProfileEntry }) {
 
 export default async function ProfilePage() {
   const supabase = await createClient();
-  const [{ data: profileRow }, { data: entryRows }] = await Promise.all([
+  const [{ data: profileRow, error: profileError }, { data: entryRows, error: entriesError }] = await Promise.all([
     supabase.from("profile").select("*").maybeSingle(),
     supabase
       .from("profile_entries")
@@ -76,24 +73,29 @@ export default async function ProfilePage() {
   ]);
   const profile = profileRow as Profile | null;
   const entries = (entryRows ?? []) as ProfileEntry[];
+  if (profileError || entriesError) return <div className="space-y-4"><PageHeader title="Master profile" /><p role="alert">Your profile couldn’t load. Refresh the page to try again.</p></div>;
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">
       <PageHeader
         title="Master profile"
-        description="This is the source of truth Claude tailors every resume from. Be generous — include everything; tailoring means cutting, not inventing."
+        description="Your experience, education, and skills in one place. Your connected assistant uses this profile to tailor documents."
       />
 
+      {(profileError || entriesError) && <p role="alert" className="text-red-700 dark:text-red-300">Some profile details couldn’t load. Refresh before editing those sections.</p>}
+      <nav aria-label="Profile sections" className="flex flex-wrap gap-2 text-sm">
+        {["contact", ...SECTIONS].map((section) => <a key={section} href={`#${section}`} className="rounded-lg border border-stone-200 px-3 py-2 hover:bg-stone-100 dark:border-stone-700 dark:hover:bg-stone-800">{section === "contact" ? "Contact & summary" : SECTION_LABELS[section as Section]}</a>)}
+      </nav>
       {/* Header / contact */}
-      <Card className="p-5">
+      <section id="contact" className="scroll-mt-24"><Card className="p-5">
         <SectionTitle>Contact &amp; summary</SectionTitle>
-        <form action={saveProfileHeader} className="mt-4 space-y-4">
+        <ActionForm cancel action={saveProfileHeader} className="mt-4 space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Full name">
               <Input name="full_name" defaultValue={profile?.full_name} />
             </Field>
             <Field label="Email">
-              <Input name="email" defaultValue={profile?.email} />
+              <Input name="email" type="email" defaultValue={profile?.email} />
             </Field>
             <Field label="Phone">
               <Input name="phone" defaultValue={profile?.phone} />
@@ -115,8 +117,8 @@ export default async function ProfilePage() {
             <Textarea name="summary" rows={3} defaultValue={profile?.summary} />
           </Field>
           <Button>Save contact info</Button>
-        </form>
-      </Card>
+        </ActionForm>
+      </Card></section>
 
       {/* Sections */}
       {SECTIONS.map((section: Section) => {
@@ -125,19 +127,19 @@ export default async function ProfilePage() {
           return <SkillsManager key={section} entries={sectionEntries} />;
         }
         return (
-          <Card key={section} className="p-5">
+          <section key={section} id={section} className="scroll-mt-24"><Card className="p-5">
             <SectionTitle count={sectionEntries.length}>
               {SECTION_LABELS[section]}
             </SectionTitle>
 
             {sectionEntries.length > 0 && (
               <div className="mt-4 space-y-2">
-                {sectionEntries.map((entry) => (
+                {sectionEntries.map((entry, index) => (
                   <Disclosure
                     key={entry.id}
                     header={
                       <>
-                        <span className="min-w-0 flex-1 truncate">
+                        <span className="min-w-0 flex-1 break-words">
                           <span className="font-medium text-stone-900 dark:text-stone-100">
                             {entry.title || "(untitled)"}
                           </span>
@@ -148,28 +150,30 @@ export default async function ProfilePage() {
                             </span>
                           )}
                         </span>
-                        <span className="shrink-0 text-xs text-stone-400 tabular-nums">
+                        <span className="shrink-0 text-xs text-stone-500 dark:text-stone-400 tabular-nums">
                           {entry.date_range}
                         </span>
                       </>
                     }
                     preview={entry.description}
                   >
-                    <form
-                      action={updateProfileEntry.bind(null, entry.id)}
+                    <div className="mb-4 flex gap-2">
+                      <ActionForm label={`Move ${entry.title} up`} action={moveProfileEntry.bind(null, entry.id, "up")}><Button variant="secondary" size="sm" disabled={index === 0}>Move up</Button></ActionForm>
+                      <ActionForm label={`Move ${entry.title} down`} action={moveProfileEntry.bind(null, entry.id, "down")}><Button variant="secondary" size="sm" disabled={index === sectionEntries.length - 1}>Move down</Button></ActionForm>
+                    </div>
+                    <ActionForm
+                      cancel action={updateProfileEntry.bind(null, entry.id)}
                       className="space-y-4"
                     >
-                      <EntryFields entry={entry} />
+                      <EntryFields entry={entry} section={section} />
                       <Button size="sm">Save</Button>
-                    </form>
-                    <form
+                    </ActionForm>
+                    <ActionForm
                       action={deleteProfileEntry.bind(null, entry.id)}
                       className="mt-3"
                     >
-                      <Button variant="danger" size="sm">
-                        Delete entry
-                      </Button>
-                    </form>
+                      <DeleteButton label="Delete entry" message="Delete this profile entry? This cannot be undone." />
+                    </ActionForm>
                   </Disclosure>
                 ))}
               </div>
@@ -179,15 +183,16 @@ export default async function ProfilePage() {
               <summary className="cursor-pointer text-sm font-medium text-indigo-600 dark:text-indigo-400 transition-colors hover:text-indigo-700 dark:hover:text-indigo-300">
                 + Add {SECTION_LABELS[section].toLowerCase()} entry
               </summary>
-              <form action={addProfileEntry} className="mt-4 space-y-4">
+              <ActionForm resetOnSuccess action={addProfileEntry} className="mt-4 space-y-4">
                 <input type="hidden" name="section" value={section} />
-                <EntryFields />
+                <EntryFields section={section} />
                 <Button size="sm">Add entry</Button>
-              </form>
+              </ActionForm>
             </details>
-          </Card>
+          </Card></section>
         );
       })}
     </div>
   );
 }
+import { DeleteButton } from "@/lib/delete-button";

@@ -1,3 +1,4 @@
+import { ActionForm } from "@/lib/action-form";
 import { createJob } from "@/app/actions";
 import { Button, Card, Field, Input, PageHeader, Textarea } from "@/lib/ui";
 
@@ -10,7 +11,7 @@ export default function NewJobPage() {
       />
 
       <Card className="p-6">
-        <form action={createJob} className="space-y-5">
+        <ActionForm cancel action={createJob} className="space-y-5">
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Company" hint="required">
               <Input name="company" required />
@@ -56,7 +57,7 @@ export default function NewJobPage() {
           <div className="pt-1">
             <Button type="submit">Save job</Button>
           </div>
-        </form>
+        </ActionForm>
       </Card>
     </div>
   );
