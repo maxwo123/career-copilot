@@ -5,7 +5,7 @@ import type {
   SelectHTMLAttributes,
   TextareaHTMLAttributes,
 } from "react";
-import type { JobStatus } from "@/lib/types";
+import { JOB_STATUSES, type JobStatus } from "@/lib/types";
 
 export function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -61,6 +61,28 @@ export function StatusPill({ status }: { status: JobStatus }) {
     >
       <span className={cn("size-1.5 rounded-full", meta.dot)} />
       {meta.label}
+    </span>
+  );
+}
+
+export function StatusSelect({ includeAll = false, className, ...props }: SelectHTMLAttributes<HTMLSelectElement> & {
+  includeAll?: boolean;
+}) {
+  return (
+    <span className="relative inline-flex shrink-0">
+      <select
+        className={cn(
+          "h-8 w-36 max-w-full appearance-none rounded-lg border border-stone-300 bg-white py-1 pl-3 pr-8 text-xs font-medium text-stone-700 shadow-xs focus:border-indigo-500 focus:outline-2 focus:outline-offset-1 focus:outline-indigo-600 disabled:opacity-60 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-200",
+          className
+        )}
+        {...props}
+      >
+        {includeAll && <option value="">All statuses</option>}
+        {JOB_STATUSES.map((status) => <option key={status} value={status}>{STATUS_LABELS[status]}</option>)}
+      </select>
+      <svg aria-hidden="true" viewBox="0 0 16 16" fill="none" className="pointer-events-none absolute right-2 top-1/2 size-4 -translate-y-1/2 text-stone-500 dark:text-stone-400">
+        <path d="m4 6 4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
     </span>
   );
 }

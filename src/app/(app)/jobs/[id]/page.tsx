@@ -1,6 +1,7 @@
 import { applicationReturn } from "@/lib/mutation";
 import { CopyButton } from "@/lib/copy-button";
 import { ActionForm } from "@/lib/action-form";
+import { JobStatusControl } from "./job-status-control";
 import Link from "next/link";
 import { DeleteButton } from "@/lib/delete-button";
 import { notFound } from "next/navigation";
@@ -8,21 +9,17 @@ import {
   deleteDocument,
   deleteJob,
   updateJobDetails,
-  updateJobStatus,
 } from "@/app/actions";
 import { createClient } from "@/lib/supabase/server";
 import type { DocumentRow, Job } from "@/lib/types";
-import { DOC_TYPE_LABELS, JOB_STATUSES } from "@/lib/types";
+import { DOC_TYPE_LABELS } from "@/lib/types";
 import {
   Badge,
   Button,
   Card,
   Field,
   Input,
-  STATUS_LABELS,
   SectionTitle,
-  Select,
-  StatusPill,
   Textarea,
   formatDate,
 } from "@/lib/ui";
@@ -84,50 +81,14 @@ export default async function JobPage({
               </a>
             )}
           </div>
-          <StatusPill status={job.status} />
+          <JobStatusControl key={job.status} jobId={job.id} initialStatus={job.status} />
         </div>
+        <dl className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-stone-600 tabular-nums dark:text-stone-400">
+          {job.deadline && <div className="flex gap-1"><dt>Deadline</dt><dd className="font-medium text-stone-800 dark:text-stone-200">{formatDate(job.deadline)}</dd></div>}
+          {job.applied_at && <div className="flex gap-1"><dt>Applied</dt><dd className="font-medium text-stone-800 dark:text-stone-200">{formatDate(job.applied_at)}</dd></div>}
+          <div className="flex gap-1"><dt>Added</dt><dd className="font-medium text-stone-800 dark:text-stone-200">{formatDate(job.created_at)}</dd></div>
+        </dl>
       </div>
-
-      {/* Status + key dates */}
-      <Card className="p-4">
-        <ActionForm
-          action={updateJobStatus.bind(null, job.id)}
-          className="flex flex-wrap items-end gap-3"
-        >
-          <Field label="Status" className="w-44">
-            <Select name="status" defaultValue={job.status}>
-              {JOB_STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {STATUS_LABELS[s]}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Button>Update</Button>
-          <div className="ml-auto grid grid-cols-[auto_auto] gap-x-2 gap-y-0.5 text-xs">
-            {job.deadline && (
-              <>
-                <span className="text-right text-stone-500 dark:text-stone-400">Deadline</span>
-                <span className="text-stone-600 dark:text-stone-300 tabular-nums">
-                  {formatDate(job.deadline)}
-                </span>
-              </>
-            )}
-            {job.applied_at && (
-              <>
-                <span className="text-right text-stone-500 dark:text-stone-400">Applied</span>
-                <span className="text-stone-600 dark:text-stone-300 tabular-nums">
-                  {formatDate(job.applied_at)}
-                </span>
-              </>
-            )}
-            <span className="text-right text-stone-500 dark:text-stone-400">Added</span>
-            <span className="text-stone-600 dark:text-stone-300 tabular-nums">
-              {formatDate(job.created_at)}
-            </span>
-          </div>
-        </ActionForm>
-      </Card>
 
       {/* Documents */}
       <section>

@@ -3,9 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { Job, JobStatus } from "@/lib/types";
-import { JOB_STATUSES } from "@/lib/types";
 import { matchesJobSearch } from "@/lib/job-search";
-import { Card, Field, Input, SectionTitle, Select, STATUS_LABELS, StatusPill, buttonCls, cn, formatDate } from "@/lib/ui";
+import { Card, Field, Input, SectionTitle, StatusSelect, StatusPill, buttonCls, formatDate } from "@/lib/ui";
 
 export function JobList({ jobs, initialQuery, initialStatus }: {
   jobs: Job[];
@@ -31,25 +30,6 @@ export function JobList({ jobs, initialQuery, initialStatus }: {
 
   return (
     <>
-      <Card className="grid grid-cols-3 overflow-hidden sm:grid-cols-6 sm:divide-x sm:divide-stone-100 dark:sm:divide-stone-700/60">
-        {JOB_STATUSES.map((jobStatus) => {
-          const count = jobs.filter((job) => job.status === jobStatus).length;
-          return (
-            <button
-              key={jobStatus}
-              type="button"
-              onClick={() => updateFilters(query, status === jobStatus ? "" : jobStatus)}
-              aria-label={`${STATUS_LABELS[jobStatus]}: ${count} ${count === 1 ? "job" : "jobs"}`}
-              aria-pressed={status === jobStatus}
-              className={cn("px-4 py-3 text-left transition-colors hover:bg-stone-50 focus-visible:outline-2 focus-visible:outline-indigo-600 dark:hover:bg-stone-700/50", status === jobStatus && "bg-indigo-50 dark:bg-indigo-950/40")}
-            >
-              <div className={cn("text-xl font-semibold tabular-nums", count ? "text-stone-900 dark:text-stone-100" : "text-stone-500 dark:text-stone-400")}>{count}</div>
-              <div className="mt-0.5 text-xs font-medium text-stone-500 dark:text-stone-400">{STATUS_LABELS[jobStatus]}</div>
-            </button>
-          );
-        })}
-      </Card>
-
       <section aria-label="Tracked jobs">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <SectionTitle count={matchingJobs.length}>Tracked jobs</SectionTitle>
@@ -67,12 +47,13 @@ export function JobList({ jobs, initialQuery, initialStatus }: {
               autoComplete="off"
             />
           </Field>
-          <Field label="Status" className="grow basis-40 sm:grow-0">
-            <Select name="status" value={status} onChange={(event) => updateFilters(query, event.target.value as JobStatus | "")}>
-              <option value="">All statuses</option>
-              {JOB_STATUSES.map((jobStatus) => <option key={jobStatus} value={jobStatus}>{STATUS_LABELS[jobStatus]}</option>)}
-            </Select>
-          </Field>
+          <StatusSelect
+            includeAll
+            name="status"
+            aria-label="Filter by status"
+            value={status}
+            onChange={(event) => updateFilters(query, event.target.value as JobStatus | "")}
+          />
           {(query || status) && <button type="button" onClick={() => updateFilters("", "")} className={buttonCls("ghost")}>Clear filters</button>}
         </div>
 
