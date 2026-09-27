@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { DocumentRow, Job, Profile, ProfileEntry } from "@/lib/types";
 import { JOB_TYPES, isJobType } from "@/lib/types";
+import { APPLICATION_PROFILE_FIELDS, parseApplicationProfilePatch } from "@/lib/application-profile";
 
 // Minimal stateless MCP server (streamable HTTP transport, JSON responses).
 // The app has no AI of its own — connected AI clients (Claude, ChatGPT,
@@ -29,7 +30,7 @@ Session protocol:
 3. RETURNING: the memory should progress over time. Whenever a conversation reveals something new — a skill gained, a goal sharpened, a worry, a win — merge it in via update_career_narrative. Refine the existing text (you loaded it in step 1); never wholesale overwrite. Leave coach_notes for the next session.
 4. TRANSPARENCY: if the candidate asks what you know about them, share the narrative content openly — it is their data, just stored out of the UI's way.
 5. THE DASHBOARD IS A MONTH-GROUPED TIMELINE OF ACTION ITEMS (list_notes / upsert_note / delete_note): each item has a bold title, a target month (rendered as timeline headers — schedule work across months, don't dump everything into one), and a free-text body where lines written as "[ ] task" render as checkable to-dos and "[x] task" as done. Compose each body like a document: short explanation, why it matters, links to resources, then the to-do lines. Keep it curated: a handful of items per month, mark lines "[x]" as the candidate reports progress, delete stale items. Long bodies are fine — cards are collapsed by default and expand to full height.
-6. Keep briefings current (save_document doc_type "briefing", vocabulary matched to the level recorded in current_state), and resumes truthful (tailoring selects and rephrases real profile entries, never invents).`;
+6. Keep briefings current (save_document doc_type "briefing", vocabulary matched to the level recorded in current_state), and resumes truthful (tailoring selects and rephrases real profile entries, never invents). Application-profile fields are for application forms; keep preferred_application_email separate from the resume contact email in profile.header.email. Never store passwords or criminal-background answers in the profile.`;
 
 const INTERVIEW_GUIDE = {
   style:
@@ -119,24 +120,29 @@ const TOOLS: ToolDef[] = [
   {
     name: "get_profile",
     description:
-      "The candidate's master profile: contact info, summary, and every resume entry grouped by section (education, experience, projects, leadership, skills, certifications). This is the source of truth to tailor resumes FROM — tailoring means selecting and rephrasing these real entries, never inventing new facts.",
+      "The candidate's master profile: resume contact info, separate private application-profile fields, summary, and every resume entry grouped by section. Use application_profile for application forms; keep preferred_application_email separate from header.email when tailoring resumes.",
     inputSchema: { type: "object", properties: {} },
   },
   {
     name: "update_profile",
     description:
-      "Update the profile header (contact info / summary). Only the provided fields change.",
+      "Update resume contact info, summary, or private application-profile fields. Only provided fields change. Use null to clear optional application fields; never store passwords or criminal-background answers.",
     inputSchema: {
       type: "object",
       properties: {
         full_name: { type: "string" },
-        email: { type: "string" },
+        email: { type: "string", description: "Resume contact email; separate from preferred_application_email" },
         phone: { type: "string" },
         location: { type: "string" },
         linkedin_url: { type: "string" },
         github_url: { type: "string" },
         website_url: { type: "string" },
         summary: { type: "string" },
+        gpa: { type: ["number", "null"], minimum: 0, maximum: 10, description: "GPA on the candidate's grading scale, up to three decimal places" },
+        us_work_authorized: { type: ["boolean", "null"], description: "Authorized to work in the U.S.; null means not specified" },
+        requires_sponsorship: { type: ["boolean", "null"], description: "Will require employer sponsorship; null means not specified" },
+        general_availability: { type: ["string", "null"], maxLength: 500, description: "General start date, weekly hours, or schedule" },
+        preferred_application_email: { type: ["string", "null"], maxLength: 254, description: "Email to use on application forms; separate from resume contact email" },
       },
     },
   },
@@ -525,6 +531,13 @@ async function callTool(name: string, args: any): Promise<unknown> {
               summary: p.summary,
             }
           : { note: "Profile header is empty — the candidate should fill in /profile (or use update_profile)." },
+        application_profile: {
+          gpa: p?.gpa ?? null,
+          us_work_authorized: p?.us_work_authorized ?? null,
+          requires_sponsorship: p?.requires_sponsorship ?? null,
+          general_availability: p?.general_availability ?? null,
+          preferred_application_email: p?.preferred_application_email ?? null,
+        },
         sections: bySection,
         ...(narrativeEmpty && {
           coach_context_note:
@@ -538,8 +551,15 @@ async function callTool(name: string, args: any): Promise<unknown> {
         "full_name", "email", "phone", "location",
         "linkedin_url", "github_url", "website_url", "summary",
       ] as const;
-      const patch: Record<string, string> = {};
+      const patch: Record<string, unknown> = {};
       for (const f of fields) if (typeof args?.[f] === "string") patch[f] = args[f].trim();
+      const applicationInput = Object.fromEntries(
+        APPLICATION_PROFILE_FIELDS.filter((field) => Object.hasOwn(args ?? {}, field)).map((field) => [field, args[field]])
+      );
+      const { patch: applicationPatch, fieldErrors } = parseApplicationProfilePatch(applicationInput);
+      const firstError = Object.values(fieldErrors)[0];
+      if (firstError) throw new Error(firstError);
+      Object.assign(patch, applicationPatch);
       if (!Object.keys(patch).length) throw new Error("No fields to update.");
 
       const { data: existing } = await supabase.from("profile").select("id").maybeSingle();
@@ -550,7 +570,7 @@ async function callTool(name: string, args: any): Promise<unknown> {
             .eq("id", existing.id)
         : await supabase.from("profile").insert(patch);
       if (error) throw new Error(error.message);
-      await log(supabase, "update_profile", "Updated profile header");
+      await log(supabase, "update_profile", "Updated profile details");
       return { ok: true, updated: Object.keys(patch) };
     }
 

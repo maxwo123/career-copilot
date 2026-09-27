@@ -3,6 +3,7 @@ import {
   addProfileEntry,
   deleteProfileEntry,
   saveProfileHeader,
+  saveApplicationProfile,
   updateProfileEntry,
   moveProfileEntry,
 } from "@/app/actions";
@@ -17,6 +18,7 @@ import {
   Input,
   PageHeader,
   SectionTitle,
+  Select,
   Textarea,
 } from "@/lib/ui";
 import { SkillsManager } from "./skills-manager";
@@ -84,7 +86,7 @@ export default async function ProfilePage() {
 
       {(profileError || entriesError) && <p role="alert" className="text-red-700 dark:text-red-300">Some profile details couldn’t load. Refresh before editing those sections.</p>}
       <nav aria-label="Profile sections" className="flex flex-wrap gap-2 text-sm">
-        {["contact", ...SECTIONS].map((section) => <a key={section} href={`#${section}`} className="rounded-lg border border-stone-200 px-3 py-2 hover:bg-stone-100 dark:border-stone-700 dark:hover:bg-stone-800">{section === "contact" ? "Contact & summary" : SECTION_LABELS[section as Section]}</a>)}
+        {["contact", "application-details", ...SECTIONS].map((section) => <a key={section} href={`#${section}`} className="rounded-lg border border-stone-200 px-3 py-2 hover:bg-stone-100 dark:border-stone-700 dark:hover:bg-stone-800">{section === "contact" ? "Contact & summary" : section === "application-details" ? "Application details" : SECTION_LABELS[section as Section]}</a>)}
       </nav>
       {/* Header / contact */}
       <section id="contact" className="scroll-mt-24"><Card className="p-5">
@@ -94,7 +96,7 @@ export default async function ProfilePage() {
             <Field label="Full name">
               <Input name="full_name" defaultValue={profile?.full_name} />
             </Field>
-            <Field label="Email">
+            <Field label="Resume contact email">
               <Input name="email" type="email" defaultValue={profile?.email} />
             </Field>
             <Field label="Phone">
@@ -117,6 +119,35 @@ export default async function ProfilePage() {
             <Textarea name="summary" rows={3} defaultValue={profile?.summary} />
           </Field>
           <Button>Save contact info</Button>
+        </ActionForm>
+      </Card></section>
+
+      <section id="application-details" className="scroll-mt-24"><Card className="p-5">
+        <SectionTitle>Application details</SectionTitle>
+        <p className="mt-2 text-sm text-stone-500 dark:text-stone-400">Keep application form answers here. Your resume contact email stays separate.</p>
+        <ActionForm cancel action={saveApplicationProfile} className="mt-4 space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="GPA" hint="use your school's scale, up to 10">
+              <Input name="gpa" type="number" min="0" max="10" step="0.001" defaultValue={profile?.gpa ?? ""} />
+            </Field>
+            <Field label="Preferred application email" hint="separate from resume email">
+              <Input name="preferred_application_email" type="email" defaultValue={profile?.preferred_application_email ?? ""} />
+            </Field>
+            <Field label="Authorized to work in the U.S.?">
+              <Select name="us_work_authorized" defaultValue={profile?.us_work_authorized === null || profile?.us_work_authorized === undefined ? "" : profile.us_work_authorized ? "yes" : "no"}>
+                <option value="">Not specified</option><option value="yes">Yes</option><option value="no">No</option>
+              </Select>
+            </Field>
+            <Field label="Will you require sponsorship?">
+              <Select name="requires_sponsorship" defaultValue={profile?.requires_sponsorship === null || profile?.requires_sponsorship === undefined ? "" : profile.requires_sponsorship ? "yes" : "no"}>
+                <option value="">Not specified</option><option value="yes">Yes</option><option value="no">No</option>
+              </Select>
+            </Field>
+          </div>
+          <Field label="General availability" hint="start date, weekly hours, or schedule">
+            <Textarea name="general_availability" rows={2} maxLength={500} defaultValue={profile?.general_availability ?? ""} />
+          </Field>
+          <Button>Save application details</Button>
         </ActionForm>
       </Card></section>
 

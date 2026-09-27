@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { applicationReturn, type MutationResult } from "@/lib/mutation";
+import { parseApplicationProfilePatch } from "@/lib/application-profile";
 import { createClient } from "@/lib/supabase/server";
 import type { JobStatus, Section } from "@/lib/types";
 import { JOB_STATUSES, SECTIONS, isJobType } from "@/lib/types";
@@ -263,6 +264,28 @@ export async function saveProfileHeader(formData: FormData): Promise<MutationRes
   if (error) return { error: error.message };
   refreshWorkspace();
   return { message: "Saved." };
+}
+
+export async function saveApplicationProfile(formData: FormData): Promise<MutationResult> {
+  const supabase = await authenticatedClient();
+  const { patch, fieldErrors } = parseApplicationProfilePatch({
+    gpa: formData.get("gpa"),
+    us_work_authorized: formData.get("us_work_authorized"),
+    requires_sponsorship: formData.get("requires_sponsorship"),
+    general_availability: formData.get("general_availability"),
+    preferred_application_email: formData.get("preferred_application_email"),
+  });
+  if (Object.keys(fieldErrors).length) return { error: "Check the application details below.", fieldErrors: { ...fieldErrors } };
+
+  const { data: existing, error: readError } = await supabase.from("profile").select("id").maybeSingle();
+  if (readError) return { error: "Couldn’t load your profile. Your draft is still here; try again." };
+  const values = { ...patch, updated_at: new Date().toISOString() };
+  const { error } = existing
+    ? await supabase.from("profile").update(values).eq("id", existing.id)
+    : await supabase.from("profile").insert(values);
+  if (error) return { error: error.message };
+  revalidatePath("/profile");
+  return { message: "Application details saved." };
 }
 
 export async function addProfileEntry(formData: FormData): Promise<MutationResult> {

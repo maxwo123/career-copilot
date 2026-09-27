@@ -12,6 +12,11 @@ create table if not exists profile (
   github_url text not null default '',
   website_url text not null default '',
   summary text not null default '', -- professional summary / objective
+  gpa numeric(5, 3) check (gpa between 0 and 10),
+  us_work_authorized boolean,
+  requires_sponsorship boolean,
+  general_availability text check (char_length(general_availability) <= 500),
+  preferred_application_email text check (char_length(preferred_application_email) <= 254),
   updated_at timestamptz not null default now()
 );
 

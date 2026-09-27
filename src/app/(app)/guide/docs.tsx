@@ -460,6 +460,12 @@ gemini mcp add --transport http career-copilot ${origin}/api/mcp \\
           generous — include everything, because tailoring means cutting,
           not inventing.
         </P>
+        <P>
+          Application details such as GPA, work authorization, sponsorship,
+          availability, and a preferred application email are stored separately
+          from your resume contact email. You can leave them blank until you
+          are ready to use them on application forms.
+        </P>
         <Ul>
           <li>
             Entries collapse to a title row with a faded description preview;

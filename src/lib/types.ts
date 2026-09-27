@@ -85,6 +85,11 @@ export interface Profile {
   github_url: string;
   website_url: string;
   summary: string;
+  gpa: number | null;
+  us_work_authorized: boolean | null;
+  requires_sponsorship: boolean | null;
+  general_availability: string | null;
+  preferred_application_email: string | null;
   updated_at: string;
 }
 

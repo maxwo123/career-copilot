@@ -25,7 +25,7 @@ function setup({ appliedAt = null, failure = null, signedIn = true } = {}) {
       },
     }; return chain;
   }};
-  return { api: load('src/app/actions.ts', { 'next/cache': { revalidatePath: (path) => refreshed.push(path) }, '@/lib/supabase/server': { createClient: async () => client }, '@/lib/types': types, '@/lib/mutation': load('src/lib/mutation.ts') }), writes, refreshed };
+  return { api: load('src/app/actions.ts', { 'next/cache': { revalidatePath: (path) => refreshed.push(path) }, '@/lib/supabase/server': { createClient: async () => client }, '@/lib/types': types, '@/lib/mutation': load('src/lib/mutation.ts'), '@/lib/application-profile': load('src/lib/application-profile.ts') }), writes, refreshed };
 }
 function form(values) { const data = new FormData(); Object.entries(values).forEach(([k, v]) => data.set(k, v)); return data; }
 test('status changes preserve the original application date', async () => {
@@ -72,6 +72,25 @@ test('job type is validated and stored when adding or editing a job', async () =
   assert.equal(writes[0].value.job_type, 'full_time');
   await api.updateJobDetails('job', form({ job_type: 'internship' }));
   assert.equal(writes.find((write) => write.table === 'jobs' && write.op === 'update').value.job_type, 'internship');
+});
+test('application details save independently from resume contact email', async () => {
+  const { api, writes, refreshed } = setup();
+  const invalid = await api.saveApplicationProfile(form({ gpa: '11', preferred_application_email: 'bad-email' }));
+  assert.ok(invalid.fieldErrors.gpa);
+  assert.ok(invalid.fieldErrors.preferred_application_email);
+  assert.equal(writes.length, 0);
+
+  await api.saveApplicationProfile(form({
+    gpa: '3.875', us_work_authorized: 'yes', requires_sponsorship: 'no',
+    general_availability: 'Available June 2027', preferred_application_email: 'apply@example.com',
+  }));
+  const profileWrite = writes.find((write) => write.table === 'profile');
+  assert.equal(profileWrite.value.gpa, 3.875);
+  assert.equal(profileWrite.value.us_work_authorized, true);
+  assert.equal(profileWrite.value.requires_sponsorship, false);
+  assert.equal(profileWrite.value.preferred_application_email, 'apply@example.com');
+  assert.equal(Object.hasOwn(profileWrite.value, 'email'), false);
+  assert.ok(refreshed.includes('/profile'));
 });
 test('serial saves cannot finish out of order and a failed save does not block retry', async () => {
   const { createSerialSave } = load('src/lib/serial-save.ts');
