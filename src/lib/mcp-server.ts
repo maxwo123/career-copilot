@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { DocumentRow, Job, Profile, ProfileEntry } from "@/lib/types";
+import { JOB_TYPES, isJobType } from "@/lib/types";
 
 // Minimal stateless MCP server (streamable HTTP transport, JSON responses).
 // The app has no AI of its own — connected AI clients (Claude, ChatGPT,
@@ -170,11 +171,12 @@ const TOOLS: ToolDef[] = [
   {
     name: "list_jobs",
     description:
-      "All jobs in the tracker with status, deadline, and whether a job description is on file. Statuses: saved → applied → interviewing → offer / rejected / withdrawn.",
+      "All jobs in the tracker with status, job type, deadline, and whether a job description is on file. Statuses: saved → applied → interviewing → offer / rejected / withdrawn.",
     inputSchema: {
       type: "object",
       properties: {
         status: { type: "string", enum: JOB_STATUSES, description: "Optional filter" },
+        job_type: { type: "string", enum: [...JOB_TYPES, "unspecified"], description: "Optional job type filter" },
       },
     },
   },
@@ -199,6 +201,7 @@ const TOOLS: ToolDef[] = [
         url: { type: "string" },
         source: { type: "string", description: "Handshake, LinkedIn, company site..." },
         location: { type: "string" },
+        job_type: { type: "string", enum: JOB_TYPES, description: "Full Time, Part Time, or Internship" },
         jd_text: { type: "string", description: "Full job description text" },
         deadline: { type: "string", description: "YYYY-MM-DD" },
         notes: { type: "string" },
@@ -215,6 +218,7 @@ const TOOLS: ToolDef[] = [
       properties: {
         job_id: { type: "string" },
         status: { type: "string", enum: JOB_STATUSES },
+        job_type: { type: "string", enum: [...JOB_TYPES, ""], description: "Job type, or empty to clear it" },
         jd_text: { type: "string" },
         notes: { type: "string" },
         deadline: { type: "string", description: "YYYY-MM-DD" },
@@ -594,12 +598,15 @@ async function callTool(name: string, args: any): Promise<unknown> {
     case "list_jobs": {
       let q = supabase.from("jobs").select("*").order("created_at", { ascending: false });
       if (args?.status) q = q.eq("status", args.status);
+      if (args?.job_type === "unspecified") q = q.is("job_type", null);
+      else if (args?.job_type) q = q.eq("job_type", args.job_type);
       const { data } = await q;
       return ((data ?? []) as Job[]).map((j) => ({
         job_id: j.id,
         company: j.company,
         title: j.title,
         status: j.status,
+        job_type: j.job_type,
         location: j.location,
         source: j.source,
         deadline: j.deadline,
@@ -628,6 +635,7 @@ async function callTool(name: string, args: any): Promise<unknown> {
         source: j.source,
         location: j.location,
         status: j.status,
+        job_type: j.job_type,
         deadline: j.deadline,
         applied_at: j.applied_at,
         notes: j.notes,
@@ -646,6 +654,8 @@ async function callTool(name: string, args: any): Promise<unknown> {
       const company = str(args?.company);
       const title = str(args?.title);
       if (!company || !title) throw new Error("company and title are required.");
+      const jobType = str(args?.job_type);
+      if (jobType && !isJobType(jobType)) throw new Error("job_type must be full_time, part_time, or internship.");
       const { data, error } = await supabase
         .from("jobs")
         .insert({
@@ -654,6 +664,7 @@ async function callTool(name: string, args: any): Promise<unknown> {
           url: str(args?.url),
           source: str(args?.source),
           location: str(args?.location),
+          job_type: jobType || null,
           jd_text: str(args?.jd_text),
           notes: str(args?.notes),
           deadline: str(args?.deadline) || null,
@@ -662,7 +673,7 @@ async function callTool(name: string, args: any): Promise<unknown> {
         .single();
       if (error) throw new Error(error.message);
       await log(supabase, "add_job", `Added ${title} @ ${company}`, data.id);
-      return { job_id: data.id, status: "saved" };
+      return { job_id: data.id, status: "saved", job_type: jobType || null };
     }
 
     case "update_job": {
@@ -674,6 +685,11 @@ async function callTool(name: string, args: any): Promise<unknown> {
         }
         patch.status = args.status;
         if (args.status === "applied") patch.applied_at = new Date().toISOString();
+      }
+      if (args?.job_type !== undefined) {
+        const jobType = str(args.job_type);
+        if (jobType && !isJobType(jobType)) throw new Error("job_type must be full_time, part_time, or internship.");
+        patch.job_type = jobType || null;
       }
       if (typeof args?.jd_text === "string") patch.jd_text = args.jd_text.trim();
       if (typeof args?.notes === "string") patch.notes = args.notes.trim();

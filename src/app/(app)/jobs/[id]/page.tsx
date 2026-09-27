@@ -12,7 +12,7 @@ import {
 } from "@/app/actions";
 import { createClient } from "@/lib/supabase/server";
 import type { DocumentRow, Job } from "@/lib/types";
-import { DOC_TYPE_LABELS } from "@/lib/types";
+import { DOC_TYPE_LABELS, JOB_TYPES, JOB_TYPE_LABELS } from "@/lib/types";
 import {
   Badge,
   Button,
@@ -20,6 +20,7 @@ import {
   Field,
   Input,
   SectionTitle,
+  Select,
   Textarea,
   formatDate,
 } from "@/lib/ui";
@@ -84,6 +85,7 @@ export default async function JobPage({
           <JobStatusControl key={job.status} jobId={job.id} initialStatus={job.status} />
         </div>
         <dl className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-stone-600 tabular-nums dark:text-stone-400">
+          <div className="flex gap-1"><dt>Job type</dt><dd className="font-medium text-stone-800 dark:text-stone-200">{job.job_type ? JOB_TYPE_LABELS[job.job_type] : "Not specified"}</dd></div>
           {job.deadline && <div className="flex gap-1"><dt>Deadline</dt><dd className="font-medium text-stone-800 dark:text-stone-200">{formatDate(job.deadline)}</dd></div>}
           {job.applied_at && <div className="flex gap-1"><dt>Applied</dt><dd className="font-medium text-stone-800 dark:text-stone-200">{formatDate(job.applied_at)}</dd></div>}
           <div className="flex gap-1"><dt>Added</dt><dd className="font-medium text-stone-800 dark:text-stone-200">{formatDate(job.created_at)}</dd></div>
@@ -169,7 +171,13 @@ export default async function JobPage({
             cancel action={updateJobDetails.bind(null, job.id)}
             className="space-y-4 border-t border-stone-100 dark:border-stone-700/60 p-4"
           >
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Job type">
+                <Select name="job_type" defaultValue={job.job_type ?? ""}>
+                  <option value="">Not specified</option>
+                  {JOB_TYPES.map((type) => <option key={type} value={type}>{JOB_TYPE_LABELS[type]}</option>)}
+                </Select>
+              </Field>
               <Field label="Posting URL">
                 <Input name="url" defaultValue={job.url} />
               </Field>

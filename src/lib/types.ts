@@ -15,6 +15,20 @@ export const JOB_STATUSES: JobStatus[] = [
   "withdrawn",
 ];
 
+export type JobType = "full_time" | "part_time" | "internship";
+
+export const JOB_TYPES: JobType[] = ["full_time", "part_time", "internship"];
+
+export const JOB_TYPE_LABELS: Record<JobType, string> = {
+  full_time: "Full Time",
+  part_time: "Part Time",
+  internship: "Internship",
+};
+
+export function isJobType(value: string): value is JobType {
+  return JOB_TYPES.includes(value as JobType);
+}
+
 export type Section =
   | "education"
   | "experience"
@@ -94,6 +108,7 @@ export interface Job {
   url: string;
   source: string;
   location: string;
+  job_type: JobType | null;
   jd_text: string;
   status: JobStatus;
   deadline: string | null;

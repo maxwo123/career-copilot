@@ -2,31 +2,40 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import type { Job, JobStatus } from "@/lib/types";
-import { matchesJobSearch } from "@/lib/job-search";
+import type { Job, JobStatus, JobType } from "@/lib/types";
+import { JOB_TYPES, JOB_TYPE_LABELS } from "@/lib/types";
+import { matchesJobSearch, matchesJobType } from "@/lib/job-search";
 import { Card, Field, Input, SectionTitle, StatusSelect, StatusPill, buttonCls, formatDate } from "@/lib/ui";
 
-export function JobList({ jobs, initialQuery, initialStatus }: {
+type JobTypeFilter = JobType | "unspecified" | "";
+
+export function JobList({ jobs, initialQuery, initialStatus, initialJobType }: {
   jobs: Job[];
   initialQuery: string;
   initialStatus: JobStatus | "";
+  initialJobType: JobTypeFilter;
 }) {
   const [query, setQuery] = useState(initialQuery);
   const [status, setStatus] = useState<JobStatus | "">(initialStatus);
+  const [jobType, setJobType] = useState<JobTypeFilter>(initialJobType);
   const matchingJobs = jobs.filter((job) =>
-    (!status || job.status === status) && matchesJobSearch(job, query)
+    (!status || job.status === status) &&
+    matchesJobType(job, jobType) &&
+    matchesJobSearch(job, query)
   );
 
-  function updateFilters(nextQuery: string, nextStatus: JobStatus | "") {
+  function updateFilters(nextQuery: string, nextStatus: JobStatus | "", nextJobType: JobTypeFilter) {
     setQuery(nextQuery);
     setStatus(nextStatus);
+    setJobType(nextJobType);
     const params = new URLSearchParams();
     if (nextQuery.trim()) params.set("q", nextQuery.trim());
     if (nextStatus) params.set("status", nextStatus);
+    if (nextJobType) params.set("type", nextJobType);
     window.history.replaceState(null, "", `/applications${params.size ? `?${params}` : ""}`);
   }
 
-  const returnTo = `/applications${query.trim() || status ? `?${new URLSearchParams({ view: "jobs", ...(query.trim() ? { q: query.trim() } : {}), ...(status ? { status } : {}) })}` : ""}`;
+  const returnTo = `/applications${query.trim() || status || jobType ? `?${new URLSearchParams({ view: "jobs", ...(query.trim() ? { q: query.trim() } : {}), ...(status ? { status } : {}), ...(jobType ? { type: jobType } : {}) })}` : ""}`;
 
   return (
     <>
@@ -42,7 +51,7 @@ export function JobList({ jobs, initialQuery, initialStatus }: {
               name="q"
               type="search"
               value={query}
-              onChange={(event) => updateFilters(event.target.value, status)}
+              onChange={(event) => updateFilters(event.target.value, status, jobType)}
               placeholder="Search role, company, or location…"
               autoComplete="off"
             />
@@ -52,9 +61,22 @@ export function JobList({ jobs, initialQuery, initialStatus }: {
             name="status"
             aria-label="Filter by status"
             value={status}
-            onChange={(event) => updateFilters(query, event.target.value as JobStatus | "")}
+            onChange={(event) => updateFilters(query, event.target.value as JobStatus | "", jobType)}
           />
-          {(query || status) && <button type="button" onClick={() => updateFilters("", "")} className={buttonCls("ghost")}>Clear filters</button>}
+          <label className="flex flex-col gap-1.5 text-xs font-medium text-stone-700 dark:text-stone-300">
+            Job type
+            <select
+              name="type"
+              value={jobType}
+              onChange={(event) => updateFilters(query, status, event.target.value as JobTypeFilter)}
+              className="h-8 w-36 rounded-lg border border-stone-300 bg-white px-2 text-xs text-stone-700 focus:outline-2 focus:outline-offset-1 focus:outline-indigo-600 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-200"
+            >
+              <option value="">All types</option>
+              {JOB_TYPES.map((type) => <option key={type} value={type}>{JOB_TYPE_LABELS[type]}</option>)}
+              <option value="unspecified">Not specified</option>
+            </select>
+          </label>
+          {(query || status || jobType) && <button type="button" onClick={() => updateFilters("", "", "")} className={buttonCls("ghost")}>Clear filters</button>}
         </div>
 
         {jobs.length === 0 ? (
@@ -66,8 +88,8 @@ export function JobList({ jobs, initialQuery, initialStatus }: {
         ) : matchingJobs.length === 0 ? (
           <Card className="p-8 text-center">
             <h2 className="font-semibold">No matching jobs</h2>
-            <p className="mt-2 text-sm text-stone-600 dark:text-stone-400">Try another role, company, or location, or clear the filters.</p>
-            <button type="button" onClick={() => updateFilters("", "")} className={buttonCls("secondary", "md", "mt-4")}>Show all jobs</button>
+            <p className="mt-2 text-sm text-stone-600 dark:text-stone-400">Try another search or filter, or show all jobs.</p>
+            <button type="button" onClick={() => updateFilters("", "", "")} className={buttonCls("secondary", "md", "mt-4")}>Show all jobs</button>
           </Card>
         ) : (
           <Card className="divide-y divide-stone-200 overflow-hidden dark:divide-stone-700">
@@ -86,6 +108,7 @@ export function JobList({ jobs, initialQuery, initialStatus }: {
                   {job.applied_at && <span>Applied {formatDate(job.applied_at)}</span>}
                   {!job.deadline && !job.applied_at && <span>Added {formatDate(job.created_at)}</span>}
                   {!job.jd_text && <span className="font-medium text-amber-600 dark:text-amber-500">No JD pasted</span>}
+                  {job.job_type && <span>{JOB_TYPE_LABELS[job.job_type]}</span>}
                   <StatusPill status={job.status} />
                 </div>
               </Link>

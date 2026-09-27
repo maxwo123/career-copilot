@@ -1,6 +1,7 @@
 import { ActionForm } from "@/lib/action-form";
 import { createJob } from "@/app/actions";
-import { Button, Card, Field, Input, PageHeader, Textarea } from "@/lib/ui";
+import { JOB_TYPES, JOB_TYPE_LABELS } from "@/lib/types";
+import { Button, Card, Field, Input, PageHeader, Select, Textarea } from "@/lib/ui";
 
 export default function NewJobPage() {
   return (
@@ -29,7 +30,13 @@ export default function NewJobPage() {
             />
           </Field>
 
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Job type">
+              <Select name="job_type" defaultValue="">
+                <option value="">Not specified</option>
+                {JOB_TYPES.map((type) => <option key={type} value={type}>{JOB_TYPE_LABELS[type]}</option>)}
+              </Select>
+            </Field>
             <Field label="Source">
               <Input name="source" placeholder="Handshake, LinkedIn..." />
             </Field>

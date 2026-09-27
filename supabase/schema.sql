@@ -37,6 +37,7 @@ create table if not exists jobs (
   url text not null default '',
   source text not null default '',   -- Handshake, LinkedIn, company site...
   location text not null default '',
+  job_type text check (job_type in ('full_time', 'part_time', 'internship')),
   jd_text text not null default '',  -- pasted job description
   status text not null default 'saved' check (status in
     ('saved', 'applied', 'interviewing', 'offer', 'rejected', 'withdrawn')),

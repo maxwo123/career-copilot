@@ -9,8 +9,8 @@ import {
   trackTimelineEvent,
 } from "@/app/actions";
 import { createClient } from "@/lib/supabase/server";
-import type { Job, JobStatus, TimelineEvent } from "@/lib/types";
-import { JOB_STATUSES } from "@/lib/types";
+import type { Job, JobStatus, JobType, TimelineEvent } from "@/lib/types";
+import { JOB_STATUSES, JOB_TYPES } from "@/lib/types";
 import {
   Button,
   Card,
@@ -46,14 +46,15 @@ function windowState(e: TimelineEvent): "past" | "open" | "upcoming" {
 }
 
 export default async function ApplicationsPage({ searchParams }: {
-  searchParams: Promise<{ q?: string; status?: string; view?: string; window?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; type?: string; view?: string; window?: string }>;
 }) {
   const params = await searchParams;
   const query = typeof params.q === "string" ? params.q.trim() : "";
   const status = JOB_STATUSES.includes(params.status as JobStatus) ? params.status as JobStatus : "";
+  const jobType = params.type === "unspecified" || JOB_TYPES.includes(params.type as JobType) ? params.type as JobType | "unspecified" : "";
   const view = params.view === "timeline" ? "timeline" : "jobs";
   const windowFilter = ["open", "upcoming", "past"].includes(params.window ?? "") ? params.window : "";
-  const returnTo = `/applications?${new URLSearchParams(view === "timeline" ? { view, ...(windowFilter ? { window: windowFilter } : {}) } : { view, ...(query ? { q: query } : {}), ...(status ? { status } : {}) })}`;
+  const returnTo = `/applications?${new URLSearchParams(view === "timeline" ? { view, ...(windowFilter ? { window: windowFilter } : {}) } : { view, ...(query ? { q: query } : {}), ...(status ? { status } : {}), ...(jobType ? { type: jobType } : {}) })}`;
   const jobHref = (id: string) => `/jobs/${id}?${new URLSearchParams({ returnTo })}`;
   const supabase = await createClient();
   const [{ data: jobRows, error: jobsError }, { data: eventRows, error: eventsError }] = await Promise.all([
@@ -129,7 +130,7 @@ export default async function ApplicationsPage({ searchParams }: {
         </section>
       ); })}
 
-      {!jobsError && <JobList key={`${query}:${status}`} jobs={jobs} initialQuery={query} initialStatus={status} />}
+      {!jobsError && <JobList key={`${query}:${status}:${jobType}`} jobs={jobs} initialQuery={query} initialStatus={status} initialJobType={jobType} />}
 
       </>}
       {/* Application-window timeline */}

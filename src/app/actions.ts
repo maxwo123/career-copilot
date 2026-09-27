@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { applicationReturn, type MutationResult } from "@/lib/mutation";
 import { createClient } from "@/lib/supabase/server";
 import type { JobStatus, Section } from "@/lib/types";
-import { JOB_STATUSES, SECTIONS } from "@/lib/types";
+import { JOB_STATUSES, SECTIONS, isJobType } from "@/lib/types";
 
 async function logActivity(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -36,6 +36,8 @@ export async function createJob(formData: FormData): Promise<MutationResult> {
   const company = String(formData.get("company") ?? "").trim();
   const title = String(formData.get("title") ?? "").trim();
   if (!company || !title) return { error: "Enter the company and job title.", fieldErrors: { ...(!company ? { company: "Company is required." } : {}), ...(!title ? { title: "Job title is required." } : {}) } };
+  const jobType = String(formData.get("job_type") ?? "").trim();
+  if (jobType && !isJobType(jobType)) return { error: "Choose a valid job type.", fieldErrors: { job_type: "Choose Full Time, Part Time, or Internship." } };
 
   const deadline = String(formData.get("deadline") ?? "").trim();
   const { data, error } = await supabase
@@ -46,6 +48,7 @@ export async function createJob(formData: FormData): Promise<MutationResult> {
       url: String(formData.get("url") ?? "").trim(),
       source: String(formData.get("source") ?? "").trim(),
       location: String(formData.get("location") ?? "").trim(),
+      job_type: jobType || null,
       jd_text: String(formData.get("jd_text") ?? "").trim(),
       notes: String(formData.get("notes") ?? "").trim(),
       deadline: deadline || null,
@@ -81,6 +84,8 @@ export async function updateJobStatus(jobId: string, formData: FormData): Promis
 }
 
 export async function updateJobDetails(jobId: string, formData: FormData): Promise<MutationResult> {
+  const jobType = String(formData.get("job_type") ?? "").trim();
+  if (jobType && !isJobType(jobType)) return { error: "Choose a valid job type.", fieldErrors: { job_type: "Choose Full Time, Part Time, or Internship." } };
   const supabase = await authenticatedClient();
   const deadline = String(formData.get("deadline") ?? "").trim();
   const { error } = await supabase
@@ -89,6 +94,7 @@ export async function updateJobDetails(jobId: string, formData: FormData): Promi
       url: String(formData.get("url") ?? "").trim(),
       source: String(formData.get("source") ?? "").trim(),
       location: String(formData.get("location") ?? "").trim(),
+      job_type: jobType || null,
       notes: String(formData.get("notes") ?? "").trim(),
       jd_text: String(formData.get("jd_text") ?? "").trim(),
       deadline: deadline || null,

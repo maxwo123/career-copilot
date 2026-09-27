@@ -63,6 +63,16 @@ test('missing job fields return focusable field errors', async () => {
   const result = await api.createJob(form({ company: ' ', title: '' }));
   assert.ok(result.fieldErrors.company); assert.ok(result.fieldErrors.title); assert.equal(writes.length, 0);
 });
+test('job type is validated and stored when adding or editing a job', async () => {
+  const { api, writes } = setup();
+  const invalid = await api.createJob(form({ company: 'Acme', title: 'Analyst', job_type: 'contract' }));
+  assert.equal(invalid.fieldErrors.job_type, 'Choose Full Time, Part Time, or Internship.');
+  assert.equal(writes.length, 0);
+  await api.createJob(form({ company: 'Acme', title: 'Analyst', job_type: 'full_time' }));
+  assert.equal(writes[0].value.job_type, 'full_time');
+  await api.updateJobDetails('job', form({ job_type: 'internship' }));
+  assert.equal(writes.find((write) => write.table === 'jobs' && write.op === 'update').value.job_type, 'internship');
+});
 test('serial saves cannot finish out of order and a failed save does not block retry', async () => {
   const { createSerialSave } = load('src/lib/serial-save.ts');
   const queue = createSerialSave(), events = [];
