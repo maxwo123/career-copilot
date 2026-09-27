@@ -9,6 +9,7 @@ const LINKS = [
   { href: "/applications", label: "Applications" },
   { href: "/documents", label: "Documents" },
   { href: "/profile", label: "Profile" },
+  { href: "/vault", label: "Login vault" },
   { href: "/guide", label: "Getting started" },
 ];
 
