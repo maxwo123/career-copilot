@@ -50,6 +50,11 @@ const { mcpPost } = load('src/lib/mcp-server.ts', {
   '@/lib/supabase/service': { createServiceClient: () => client },
   '@/lib/types': load('src/lib/types.ts'),
   '@/lib/application-profile': profileParser,
+  '@/lib/vault-agent-access': {
+    listAgentVaultLogins: async () => [],
+    getAgentVaultLogin: async () => { throw new Error('not used in profile tests'); },
+    saveAgentVaultLogin: async () => { throw new Error('not used in profile tests'); },
+  },
 });
 const request = (method, params = {}) => ({
   headers: { get: (name) => name === 'authorization' ? 'Bearer test-token' : null },

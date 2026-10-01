@@ -25,6 +25,8 @@ export function VaultClient() {
   const [unlocked, setUnlocked] = useState(false);
   const [logins, setLogins] = useState<Login[]>([]);
   const [revealed, setRevealed] = useState<string | null>(null);
+  const [agentEnabled, setAgentEnabled] = useState(false);
+  const [agentPassphrase, setAgentPassphrase] = useState("");
   const [site, setSite] = useState("");
   const [url, setUrl] = useState("");
   const [email, setEmail] = useState("");
@@ -39,11 +41,14 @@ export function VaultClient() {
       if (authError || !user) { setError("Sign in again to open the vault."); setLoading(false); return; }
       userId.current = user.id;
       setHasUser(true);
-      const result = await client.from("credential_vault_settings")
-        .select("salt, verifier_iv, verifier_ciphertext").eq("user_id", user.id).maybeSingle();
+      const [result, accessResult] = await Promise.all([
+        client.from("credential_vault_settings")
+          .select("salt, verifier_iv, verifier_ciphertext").eq("user_id", user.id).maybeSingle(),
+        client.from("credential_vault_agent_access").select("user_id").eq("user_id", user.id).maybeSingle(),
+      ]);
       if (!active) return;
-      if (result.error) setError("The vault is unavailable. Its database migration may still need to be applied.");
-      else setSettings(result.data);
+      if (result.error || accessResult.error) setError("The vault is unavailable. Its database migration may still need to be applied.");
+      else { setSettings(result.data); setAgentEnabled(!!accessResult.data); }
       setLoading(false);
     })();
     return () => { active = false; key.current = null; };
@@ -124,6 +129,41 @@ export function VaultClient() {
     setBusy(false);
   }
 
+  async function enableAgentAccess(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!settings) return;
+    setBusy(true); setError(""); setNotice("");
+    try {
+      const shareableKey = await deriveVaultKey(agentPassphrase, settings.salt, true);
+      try {
+        if (await decryptVaultText(shareableKey, settings.verifier_iv, settings.verifier_ciphertext) !== VERIFIER)
+          throw new Error("Incorrect vault passphrase.");
+      } catch { throw new Error("Incorrect vault passphrase."); }
+      const keyBytes = new Uint8Array(await crypto.subtle.exportKey("raw", shareableKey));
+      const response = await fetch("/api/vault/agent-access", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: btoa(String.fromCharCode(...keyBytes)) }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Couldn’t enable agent access.");
+      setAgentEnabled(true); setNotice("Connected AI can now access saved logins through MCP.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Couldn’t enable agent access.");
+    } finally { setAgentPassphrase(""); setBusy(false); }
+  }
+
+  async function disableAgentAccess() {
+    setBusy(true); setError(""); setNotice("");
+    try {
+      const response = await fetch("/api/vault/agent-access", { method: "DELETE" });
+      if (!response.ok) throw new Error("Couldn’t disable agent access.");
+      setAgentEnabled(false); setNotice("Connected AI access is off.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Couldn’t disable agent access.");
+    } finally { setBusy(false); }
+  }
+
   function lock() {
     key.current = null;
     setLogins([]); setUnlocked(false); setRevealed(null);
@@ -133,8 +173,8 @@ export function VaultClient() {
 
   return <>
     <Card className="space-y-4 p-5">
-      <p className="text-sm text-stone-600 dark:text-stone-300">Your browser encrypts each login before saving it. The vault passphrase is never sent to Career Copilot or stored in the database. Keep it somewhere you can recover: there is no passphrase reset for encrypted logins.</p>
-      <p className="text-sm text-stone-600 dark:text-stone-300">This vault is for your own use. It does not give the connected AI access to passwords or create accounts automatically.</p>
+      <p className="text-sm text-stone-600 dark:text-stone-300">Your browser encrypts each login before saving it. The vault passphrase is never sent to Career Copilot or stored in the database. If you enable AI access, an encrypted copy of the derived vault key is stored so the connected agent can read logins. Keep your passphrase somewhere you can recover: there is no passphrase reset for encrypted logins.</p>
+      <p className="text-sm text-stone-600 dark:text-stone-300">Connected AI can use saved employer logins when you enable agent access below. An agent also needs browser tools to open a site, create an account, or sign in.</p>
       {loading ? <p role="status">Loading vault…</p> : !unlocked ? <form onSubmit={openVault} className="space-y-4">
         <Field label={settings ? "Vault passphrase" : "Create vault passphrase"}>
           <Input type="password" autoComplete={settings ? "current-password" : "new-password"} value={passphrase} onChange={(event) => setPassphrase(event.target.value)} required minLength={settings ? undefined : 12} />
@@ -145,6 +185,19 @@ export function VaultClient() {
       {error && <p role="alert" className="text-sm text-red-700 dark:text-red-300">{error}</p>}
       {notice && <p role="status" className="text-sm text-emerald-700 dark:text-emerald-300">{notice}</p>}
     </Card>
+
+    {!loading && hasUser && <Card className="space-y-4 p-5">
+      <h2 className="text-lg font-semibold">Connected AI access</h2>
+      <p className="text-sm text-stone-600 dark:text-stone-300">{agentEnabled
+        ? "On: any AI connected with your Career Copilot MCP token can retrieve passwords for all saved logins and save new logins, even while this page is closed or the vault is locked. Access stays on until you turn it off."
+        : "Off: connected AI cannot use saved logins. Enable access to let any AI connected with your Career Copilot MCP token retrieve all saved login passwords and save new logins until you turn it off."}</p>
+      <p className="text-xs text-stone-500 dark:text-stone-400">Retrieved passwords appear in the connected AI provider’s tool results. Turning access off prevents future retrieval; it cannot remove passwords the agent already received.</p>
+      {agentEnabled ? <Button type="button" variant="secondary" disabled={busy} onClick={() => void disableAgentAccess()}>Turn off AI access</Button>
+        : settings ? <form onSubmit={enableAgentAccess} className="space-y-3">
+          <Field label="Vault passphrase to enable AI access"><Input type="password" autoComplete="current-password" value={agentPassphrase} onChange={(event) => setAgentPassphrase(event.target.value)} required /></Field>
+          <Button disabled={busy}>{busy ? "Working…" : "Allow connected AI access"}</Button>
+        </form> : <p className="text-sm text-stone-500">Create your vault first to enable agent access.</p>}
+    </Card>}
 
     {unlocked && <>
       <Card className="space-y-4 p-5">

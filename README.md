@@ -148,7 +148,18 @@ MCP tools: `get_career_narrative`, `update_career_narrative`,
 `get_profile`, `update_profile`, `upsert_profile_entry`,
 `delete_profile_entry`, `list_jobs`, `get_job`, `add_job`, `update_job`,
 `list_timeline`, `upsert_timeline_event`, `delete_timeline_event`,
-`save_document`, `list_documents`, `get_document`.
+`save_document`, `list_documents`, `get_document`, `list_vault_logins`,
+`get_vault_login`, `save_vault_login`.
+
+The Login vault has an explicit **Connected AI access** switch. After the user
+enables it with the vault passphrase, any agent connected through `MCP_TOKEN`
+can list and retrieve all saved employer logins, including new ones, until the
+user switches access off. The browser sends the derived vault key to the server
+when enabling access; the server stores it encrypted. The passphrase is never
+sent. Retrieved passwords are visible to the connected AI provider. A
+browser-capable agent can use a login on an employer site and save a newly
+created account's login in the vault; verification and
+two-factor authentication may still require the user.
 
 Useful prompts:
 

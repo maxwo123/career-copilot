@@ -3,6 +3,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import type { DocumentRow, Job, Profile, ProfileEntry } from "@/lib/types";
 import { JOB_TYPES, isJobType } from "@/lib/types";
 import { APPLICATION_PROFILE_FIELDS, parseApplicationProfilePatch } from "@/lib/application-profile";
+import { getAgentVaultLogin, listAgentVaultLogins, saveAgentVaultLogin } from "@/lib/vault-agent-access";
 
 // Minimal stateless MCP server (streamable HTTP transport, JSON responses).
 // The app has no AI of its own — connected AI clients (Claude, ChatGPT,
@@ -30,7 +31,8 @@ Session protocol:
 3. RETURNING: the memory should progress over time. Whenever a conversation reveals something new — a skill gained, a goal sharpened, a worry, a win — merge it in via update_career_narrative. Refine the existing text (you loaded it in step 1); never wholesale overwrite. Leave coach_notes for the next session.
 4. TRANSPARENCY: if the candidate asks what you know about them, share the narrative content openly — it is their data, just stored out of the UI's way.
 5. THE DASHBOARD IS A MONTH-GROUPED TIMELINE OF ACTION ITEMS (list_notes / upsert_note / delete_note): each item has a bold title, a target month (rendered as timeline headers — schedule work across months, don't dump everything into one), and a free-text body where lines written as "[ ] task" render as checkable to-dos and "[x] task" as done. Compose each body like a document: short explanation, why it matters, links to resources, then the to-do lines. Keep it curated: a handful of items per month, mark lines "[x]" as the candidate reports progress, delete stale items. Long bodies are fine — cards are collapsed by default and expand to full height.
-6. Keep briefings current (save_document doc_type "briefing", vocabulary matched to the level recorded in current_state), and resumes truthful (tailoring selects and rephrases real profile entries, never invents). Application-profile fields are for application forms; keep preferred_application_email separate from the resume contact email in profile.header.email. Never store passwords or criminal-background answers in the profile.`;
+6. Keep briefings current (save_document doc_type "briefing", vocabulary matched to the level recorded in current_state), and resumes truthful (tailoring selects and rephrases real profile entries, never invents). Application-profile fields are for application forms; keep preferred_application_email separate from the resume contact email in profile.header.email. Never store passwords or criminal-background answers in the profile.
+7. EMPLOYER LOGINS: when the candidate asks you to use an employer account, call list_vault_logins then get_vault_login for the right site. Access is available only while the candidate has enabled it in Login vault. Use a retrieved password only on the matching employer site; never repeat it in chat or save it in a profile, document, or note. If you create a new employer account at the candidate's request, save its login with save_vault_login. If you have browser tools, you may sign in or create an account as requested. Ask the candidate to complete email verification, CAPTCHA, or two-factor authentication when needed.`;
 
 const INTERVIEW_GUIDE = {
   style:
@@ -52,6 +54,37 @@ interface ToolDef {
 }
 
 const TOOLS: ToolDef[] = [
+  {
+    name: "list_vault_logins",
+    description:
+      "List saved employer logins while the candidate has enabled connected AI access. Returns login ids, sites, URLs and emails; passwords are omitted. Call get_vault_login for the selected login before signing in.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "get_vault_login",
+    description:
+      "Retrieve one saved employer login, including its password, while connected AI access is enabled. Use it only on the matching employer site and never echo or store the password.",
+    inputSchema: {
+      type: "object",
+      properties: { login_id: { type: "string", description: "Id returned by list_vault_logins" } },
+      required: ["login_id"],
+    },
+  },
+  {
+    name: "save_vault_login",
+    description:
+      "Save an employer account login in the encrypted vault after creating the account at the candidate's request. Requires connected AI access to be enabled. Never put the password in a profile, document, note, or chat response.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        site: { type: "string", description: "Employer or site name" },
+        url: { type: "string", description: "HTTPS login URL" },
+        email: { type: "string" },
+        password: { type: "string" },
+      },
+      required: ["site", "email", "password"],
+    },
+  },
   {
     name: "get_career_narrative",
     description:
@@ -319,6 +352,18 @@ async function callTool(name: string, args: any): Promise<unknown> {
   const supabase = createServiceClient();
 
   switch (name) {
+    case "list_vault_logins":
+      return listAgentVaultLogins();
+
+    case "get_vault_login":
+      return getAgentVaultLogin(str(args?.login_id));
+
+    case "save_vault_login":
+      return saveAgentVaultLogin({
+        site: str(args?.site), url: str(args?.url), email: str(args?.email),
+        password: typeof args?.password === "string" ? args.password : "",
+      });
+
     case "get_career_narrative": {
       const [{ data: narrativeRow }, { data: noteRows }, { data: latestBriefing }] =
         await Promise.all([
@@ -871,7 +916,7 @@ async function callTool(name: string, args: any): Promise<unknown> {
 }
 
 function rpcResult(id: unknown, result: unknown) {
-  return NextResponse.json({ jsonrpc: "2.0", id, result });
+  return NextResponse.json({ jsonrpc: "2.0", id, result }, { headers: { "Cache-Control": "no-store" } });
 }
 
 function rpcError(id: unknown, code: number, message: string, status = 200) {

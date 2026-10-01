@@ -567,6 +567,13 @@ Authorization: Bearer <MCP_TOKEN>`}</CodeBlock>
             <B>Documents</B>: <Code>save_document</Code>,{" "}
             <Code>list_documents</Code>, <Code>get_document</Code>
           </li>
+          <li>
+            <B>Login vault</B>: <Code>list_vault_logins</Code>,{" "}
+            <Code>get_vault_login</Code>, <Code>save_vault_login</Code>.
+            Enable Connected AI access in Login
+            vault first. While it is on, any agent with your MCP token can
+            retrieve all saved logins, including passwords.
+          </li>
         </Ul>
         <H2>Prompt library</H2>
         <ul className="mb-3 list-none pl-0">
@@ -577,6 +584,7 @@ Authorization: Bearer <MCP_TOKEN>`}</CodeBlock>
           <Prompt>Analyze my fit for the &lt;company&gt; job, then tailor a resume and cover letter.</Prompt>
           <Prompt>Research when &lt;industry&gt; internships open and build my application timeline.</Prompt>
           <Prompt>Research this week&apos;s news for my target industry and save me a briefing at my level.</Prompt>
+          <Prompt>Use my saved employer login to sign in and help with this application.</Prompt>
         </ul>
       </>
     ),

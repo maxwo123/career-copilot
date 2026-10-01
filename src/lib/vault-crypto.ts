@@ -11,7 +11,7 @@ function fromBase64(value: string): Uint8Array<ArrayBuffer> {
   return Uint8Array.from(atob(value), (character) => character.charCodeAt(0));
 }
 
-export async function deriveVaultKey(passphrase: string, salt: string): Promise<CryptoKey> {
+export async function deriveVaultKey(passphrase: string, salt: string, extractable = false): Promise<CryptoKey> {
   const material = await crypto.subtle.importKey(
     "raw", encoder.encode(passphrase), "PBKDF2", false, ["deriveKey"]
   );
@@ -19,7 +19,7 @@ export async function deriveVaultKey(passphrase: string, salt: string): Promise<
     { name: "PBKDF2", salt: fromBase64(salt), iterations: ITERATIONS, hash: "SHA-256" },
     material,
     { name: "AES-GCM", length: 256 },
-    false,
+    extractable,
     ["encrypt", "decrypt"]
   );
 }
