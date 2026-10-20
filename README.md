@@ -151,6 +151,16 @@ MCP tools: `get_career_narrative`, `update_career_narrative`,
 `save_document`, `list_documents`, `get_document`, `list_vault_logins`,
 `get_vault_login`, `save_vault_login`.
 
+Tracked records cover both jobs and education pathways. The connected agent
+classifies each record with `opportunity_type`: employment (full-time,
+part-time, contract, apprenticeship), experience and research (internship,
+co-op, undergraduate research, graduate assistantship, fellowship, volunteer),
+or further education (post-baccalaureate, master’s, doctoral / PhD,
+professional degree, certificate / bootcamp), with `other` as a fallback.
+The database retains the legacy `job_type` column for compatibility.
+The MCP `add_job` contract requires `opportunity_type`, and the server rejects
+agent-created opportunities that omit it or send a value outside the enum.
+
 The Login vault has an explicit **Connected AI access** switch. After the user
 enables it with the vault passphrase, any agent connected through `MCP_TOKEN`
 can list and retrieve all saved employer logins, including new ones, until the
@@ -168,6 +178,8 @@ Useful prompts:
 - "Analyze my fit for the &lt;company&gt; job, then tailor a resume and cover
   letter for it"
 - "Mark the &lt;company&gt; job as applied"
+- "Tag every opportunity in my tracker with the right type"
+- "Add this PhD program and tag it as a doctoral program"
 - "Research when big pharma / healthcare ML summer internships open and
   build my application timeline in Career Copilot"
 - "Interview me and fill in my career narrative in Career Copilot"

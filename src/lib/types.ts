@@ -15,19 +15,89 @@ export const JOB_STATUSES: JobStatus[] = [
   "withdrawn",
 ];
 
-export type JobType = "full_time" | "part_time" | "internship";
+export type OpportunityType =
+  | "full_time"
+  | "part_time"
+  | "contract"
+  | "apprenticeship"
+  | "internship"
+  | "co_op"
+  | "undergraduate_research"
+  | "graduate_assistantship"
+  | "fellowship"
+  | "volunteer"
+  | "post_baccalaureate"
+  | "masters_program"
+  | "doctoral_program"
+  | "professional_school"
+  | "certificate_program"
+  | "other";
 
-export const JOB_TYPES: JobType[] = ["full_time", "part_time", "internship"];
+export const OPPORTUNITY_TYPE_GROUPS: ReadonlyArray<{
+  label: string;
+  types: readonly OpportunityType[];
+}> = [
+  {
+    label: "Employment",
+    types: ["full_time", "part_time", "contract", "apprenticeship"],
+  },
+  {
+    label: "Experience & research",
+    types: [
+      "internship",
+      "co_op",
+      "undergraduate_research",
+      "graduate_assistantship",
+      "fellowship",
+      "volunteer",
+    ],
+  },
+  {
+    label: "Further education",
+    types: [
+      "post_baccalaureate",
+      "masters_program",
+      "doctoral_program",
+      "professional_school",
+      "certificate_program",
+    ],
+  },
+  { label: "Other", types: ["other"] },
+];
 
-export const JOB_TYPE_LABELS: Record<JobType, string> = {
-  full_time: "Full Time",
-  part_time: "Part Time",
+export const OPPORTUNITY_TYPES: OpportunityType[] = OPPORTUNITY_TYPE_GROUPS.flatMap(
+  (group) => [...group.types]
+);
+
+export const OPPORTUNITY_TYPE_LABELS: Record<OpportunityType, string> = {
+  full_time: "Full-time job",
+  part_time: "Part-time job",
+  contract: "Contract / freelance",
+  apprenticeship: "Apprenticeship",
   internship: "Internship",
+  co_op: "Co-op",
+  undergraduate_research: "Undergraduate research",
+  graduate_assistantship: "Graduate assistantship",
+  fellowship: "Fellowship",
+  volunteer: "Volunteer / service",
+  post_baccalaureate: "Post-baccalaureate program",
+  masters_program: "Master’s program",
+  doctoral_program: "Doctoral / PhD program",
+  professional_school: "Professional degree (MD, JD, etc.)",
+  certificate_program: "Certificate / bootcamp",
+  other: "Other opportunity",
 };
 
-export function isJobType(value: string): value is JobType {
-  return JOB_TYPES.includes(value as JobType);
+export function isOpportunityType(value: string): value is OpportunityType {
+  return OPPORTUNITY_TYPES.includes(value as OpportunityType);
 }
+
+// Keep the database/API vocabulary stable while the product uses the broader
+// "opportunity" language in the UI.
+export type JobType = OpportunityType;
+export const JOB_TYPES = OPPORTUNITY_TYPES;
+export const JOB_TYPE_LABELS = OPPORTUNITY_TYPE_LABELS;
+export const isJobType = isOpportunityType;
 
 export type Section =
   | "education"

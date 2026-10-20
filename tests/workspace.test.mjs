@@ -63,15 +63,15 @@ test('missing job fields return focusable field errors', async () => {
   const result = await api.createJob(form({ company: ' ', title: '' }));
   assert.ok(result.fieldErrors.company); assert.ok(result.fieldErrors.title); assert.equal(writes.length, 0);
 });
-test('job type is validated and stored when adding or editing a job', async () => {
+test('opportunity type is validated and stored when adding or editing an opportunity', async () => {
   const { api, writes } = setup();
-  const invalid = await api.createJob(form({ company: 'Acme', title: 'Analyst', job_type: 'contract' }));
-  assert.equal(invalid.fieldErrors.job_type, 'Choose Full Time, Part Time, or Internship.');
+  const invalid = await api.createJob(form({ company: 'Acme', title: 'Analyst', job_type: 'made_up_type' }));
+  assert.equal(invalid.fieldErrors.job_type, 'Choose a valid opportunity type.');
   assert.equal(writes.length, 0);
-  await api.createJob(form({ company: 'Acme', title: 'Analyst', job_type: 'full_time' }));
-  assert.equal(writes[0].value.job_type, 'full_time');
-  await api.updateJobDetails('job', form({ job_type: 'internship' }));
-  assert.equal(writes.find((write) => write.table === 'jobs' && write.op === 'update').value.job_type, 'internship');
+  await api.createJob(form({ company: 'UCI', title: 'Neuroscience Lab Assistant', job_type: 'undergraduate_research' }));
+  assert.equal(writes[0].value.job_type, 'undergraduate_research');
+  await api.updateJobDetails('job', form({ job_type: 'doctoral_program' }));
+  assert.equal(writes.find((write) => write.table === 'jobs' && write.op === 'update').value.job_type, 'doctoral_program');
 });
 test('application details save independently from resume contact email', async () => {
   const { api, writes, refreshed } = setup();

@@ -93,7 +93,7 @@ export default async function ApplicationsPage({ searchParams }: {
       {(jobsError || eventsError) && <p role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">Some applications couldn’t load. Refresh the page to try again.</p>}
 
       <nav aria-label="Application views" className="flex gap-2 border-b border-stone-200 pb-3 dark:border-stone-700">
-        <Link href="/applications?view=jobs" aria-current={view === "jobs" ? "page" : undefined} className={buttonCls(view === "jobs" ? "primary" : "ghost")}>Tracked jobs</Link>
+        <Link href="/applications?view=jobs" aria-current={view === "jobs" ? "page" : undefined} className={buttonCls(view === "jobs" ? "primary" : "ghost")}>Tracked opportunities</Link>
         <Link href="/applications?view=timeline" aria-current={view === "timeline" ? "page" : undefined} className={buttonCls(view === "timeline" ? "primary" : "ghost")}>Recruiting timeline</Link>
       </nav>
       {view === "jobs" && <>
@@ -143,8 +143,8 @@ export default async function ApplicationsPage({ searchParams }: {
         {groups.length === 0 && <p className="mb-4 text-sm text-stone-600 dark:text-stone-400">No recruiting windows match this view. Add an event below or change the filter.</p>}
         <SectionTitle count={events.length}>Application timeline</SectionTitle>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-stone-500 dark:text-stone-400">
-          When each company&apos;s application window opens — so you apply in
-          week one, not week six. Ask your AI to research companies and import
+          When each organization&apos;s application window opens — so you apply in
+          week one, not week six. Ask your AI to research opportunities and import
           their timelines through your connected assistant.
         </p>
 
@@ -234,13 +234,13 @@ export default async function ApplicationsPage({ searchParams }: {
                                 href={jobHref(e.job_id)}
                                 className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300"
                               >
-                                View tracked job →
+                                View tracked opportunity →
                               </Link>
                             ) : (
                               <ActionForm action={trackTimelineEvent.bind(null, e.id)}>
                                 <input type="hidden" name="returnTo" value={returnTo} />
                                 <Button variant="secondary" size="sm">
-                                  Track as job
+                                  Track opportunity
                                 </Button>
                               </ActionForm>
                             )}
@@ -272,7 +272,7 @@ export default async function ApplicationsPage({ searchParams }: {
               className="space-y-4 border-t border-stone-100 dark:border-stone-700/60 p-4"
             >
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Company" hint="required">
+                <Field label="Organization" hint="required">
                   <Input name="company" required placeholder="Genentech" />
                 </Field>
                 <Field label="Program / role">

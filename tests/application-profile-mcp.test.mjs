@@ -70,6 +70,37 @@ test('MCP profile schema keeps resume email and application email separate', asy
   assert.equal(update.inputSchema.properties.password, undefined);
 });
 
+test('MCP opportunity schema exposes career and graduate-school types to the agent', async () => {
+  const response = await mcpPost(request('tools/list'));
+  const add = response.body.result.tools.find((tool) => tool.name === 'add_job');
+  const update = response.body.result.tools.find((tool) => tool.name === 'update_job');
+  for (const type of ['full_time', 'internship', 'undergraduate_research', 'masters_program', 'doctoral_program', 'professional_school']) {
+    assert.ok(add.inputSchema.properties.opportunity_type.enum.includes(type), type);
+    assert.ok(update.inputSchema.properties.opportunity_type.enum.includes(type), type);
+  }
+  assert.ok(add.inputSchema.required.includes('opportunity_type'));
+  assert.equal(add.inputSchema.properties.job_type, undefined);
+});
+
+test('MCP refuses to create an untagged opportunity', async () => {
+  writes.length = 0;
+  const response = await mcpPost(request('tools/call', {
+    name: 'add_job', arguments: { company: 'UCI', title: 'Research role' },
+  }));
+  assert.equal(response.body.result.isError, true);
+  assert.match(response.body.result.content[0].text, /opportunity_type is required/);
+  assert.equal(writes.length, 0);
+});
+
+test('MCP agent can tag an opportunity with a graduate-school type', async () => {
+  writes.length = 0;
+  const response = await mcpPost(request('tools/call', {
+    name: 'update_job', arguments: { job_id: 'job', opportunity_type: 'doctoral_program' },
+  }));
+  assert.equal(response.body.result.isError, false);
+  assert.equal(writes.find((write) => write.table === 'jobs').value.job_type, 'doctoral_program');
+});
+
 test('MCP update_profile writes only supplied application details', async () => {
   writes.length = 0;
   const response = await mcpPost(request('tools/call', {

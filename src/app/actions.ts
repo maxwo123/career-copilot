@@ -36,9 +36,9 @@ export async function createJob(formData: FormData): Promise<MutationResult> {
   const supabase = await authenticatedClient();
   const company = String(formData.get("company") ?? "").trim();
   const title = String(formData.get("title") ?? "").trim();
-  if (!company || !title) return { error: "Enter the company and job title.", fieldErrors: { ...(!company ? { company: "Company is required." } : {}), ...(!title ? { title: "Job title is required." } : {}) } };
+  if (!company || !title) return { error: "Enter the organization and opportunity name.", fieldErrors: { ...(!company ? { company: "Organization is required." } : {}), ...(!title ? { title: "Opportunity name is required." } : {}) } };
   const jobType = String(formData.get("job_type") ?? "").trim();
-  if (jobType && !isJobType(jobType)) return { error: "Choose a valid job type.", fieldErrors: { job_type: "Choose Full Time, Part Time, or Internship." } };
+  if (jobType && !isJobType(jobType)) return { error: "Choose a valid opportunity type.", fieldErrors: { job_type: "Choose a valid opportunity type." } };
 
   const deadline = String(formData.get("deadline") ?? "").trim();
   const { data, error } = await supabase
@@ -86,7 +86,7 @@ export async function updateJobStatus(jobId: string, formData: FormData): Promis
 
 export async function updateJobDetails(jobId: string, formData: FormData): Promise<MutationResult> {
   const jobType = String(formData.get("job_type") ?? "").trim();
-  if (jobType && !isJobType(jobType)) return { error: "Choose a valid job type.", fieldErrors: { job_type: "Choose Full Time, Part Time, or Internship." } };
+  if (jobType && !isJobType(jobType)) return { error: "Choose a valid opportunity type.", fieldErrors: { job_type: "Choose a valid opportunity type." } };
   const supabase = await authenticatedClient();
   const deadline = String(formData.get("deadline") ?? "").trim();
   const { error } = await supabase

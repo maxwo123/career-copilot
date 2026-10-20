@@ -22,7 +22,7 @@ export default function AppLayout({
           <div className="ml-auto flex items-center gap-1">
             <ThemeToggle />
             <Link href="/jobs/new" className={buttonCls("primary", "sm", "min-h-10")}>
-              + Add job
+              + Add opportunity
             </Link>
             <form action={signOut}>
               <Button variant="ghost" size="sm" className="min-h-10">

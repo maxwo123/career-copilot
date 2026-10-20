@@ -1,28 +1,28 @@
 import { ActionForm } from "@/lib/action-form";
 import { createJob } from "@/app/actions";
-import { JOB_TYPES, JOB_TYPE_LABELS } from "@/lib/types";
+import { OPPORTUNITY_TYPE_GROUPS, OPPORTUNITY_TYPE_LABELS } from "@/lib/types";
 import { Button, Card, Field, Input, PageHeader, Select, Textarea } from "@/lib/ui";
 
 export default function NewJobPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <PageHeader
-        title="Add a job"
-        description="Paste the posting link and, importantly, the full job description — Handshake and most boards are behind a login, so the description must travel with the link for Claude to work with it."
+        title="Add an opportunity"
+        description="Track a job, research role, fellowship, or graduate program. Paste the full description so your connected AI can evaluate it and prepare the right application materials."
       />
 
       <Card className="p-6">
         <ActionForm cancel action={createJob} className="space-y-5">
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Company" hint="required">
+            <Field label="Organization" hint="required">
               <Input name="company" required />
             </Field>
-            <Field label="Job title" hint="required">
+            <Field label="Opportunity name" hint="required">
               <Input name="title" required />
             </Field>
           </div>
 
-          <Field label="Posting URL">
+          <Field label="Opportunity URL">
             <Input
               name="url"
               type="url"
@@ -31,10 +31,14 @@ export default function NewJobPage() {
           </Field>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Job type">
+            <Field label="Opportunity type">
               <Select name="job_type" defaultValue="">
                 <option value="">Not specified</option>
-                {JOB_TYPES.map((type) => <option key={type} value={type}>{JOB_TYPE_LABELS[type]}</option>)}
+                {OPPORTUNITY_TYPE_GROUPS.map((group) => (
+                  <optgroup key={group.label} label={group.label}>
+                    {group.types.map((type) => <option key={type} value={type}>{OPPORTUNITY_TYPE_LABELS[type]}</option>)}
+                  </optgroup>
+                ))}
               </Select>
             </Field>
             <Field label="Source">
@@ -48,11 +52,11 @@ export default function NewJobPage() {
             </Field>
           </div>
 
-          <Field label="Job description" hint="paste the full text">
+          <Field label="Opportunity description" hint="paste the full text">
             <Textarea
               name="jd_text"
               rows={12}
-              placeholder="Select-all + copy from the posting page and paste here."
+              placeholder="Paste the job posting, research description, or program overview here."
               className="font-mono text-xs"
             />
           </Field>
@@ -62,7 +66,7 @@ export default function NewJobPage() {
           </Field>
 
           <div className="pt-1">
-            <Button type="submit">Save job</Button>
+            <Button type="submit">Save opportunity</Button>
           </div>
         </ActionForm>
       </Card>

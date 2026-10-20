@@ -21,9 +21,11 @@ test('job search matches partial words across role, company, and location as the
   }
 });
 
-test('job type filter distinguishes each type and legacy jobs without one', () => {
+test('opportunity type filter distinguishes work, education, and legacy opportunities', () => {
   assert.equal(exports.matchesJobType({ job_type: 'internship' }, 'internship'), true);
   assert.equal(exports.matchesJobType({ job_type: 'internship' }, 'full_time'), false);
+  assert.equal(exports.matchesJobType({ job_type: 'doctoral_program' }, 'doctoral_program'), true);
+  assert.equal(exports.matchesJobType({ job_type: 'doctoral_program' }, 'masters_program'), false);
   assert.equal(exports.matchesJobType({ job_type: null }, 'unspecified'), true);
   assert.equal(exports.matchesJobType({ job_type: null }, 'part_time'), false);
   assert.equal(exports.matchesJobType({ job_type: null }, ''), true);

@@ -12,7 +12,7 @@ import {
 } from "@/app/actions";
 import { createClient } from "@/lib/supabase/server";
 import type { DocumentRow, Job } from "@/lib/types";
-import { DOC_TYPE_LABELS, JOB_TYPES, JOB_TYPE_LABELS } from "@/lib/types";
+import { DOC_TYPE_LABELS, OPPORTUNITY_TYPE_GROUPS, OPPORTUNITY_TYPE_LABELS } from "@/lib/types";
 import {
   Badge,
   Button,
@@ -85,7 +85,7 @@ export default async function JobPage({
           <JobStatusControl key={job.status} jobId={job.id} initialStatus={job.status} />
         </div>
         <dl className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-stone-600 tabular-nums dark:text-stone-400">
-          <div className="flex gap-1"><dt>Job type</dt><dd className="font-medium text-stone-800 dark:text-stone-200">{job.job_type ? JOB_TYPE_LABELS[job.job_type] : "Not specified"}</dd></div>
+          <div className="flex gap-1"><dt>Opportunity type</dt><dd className="font-medium text-stone-800 dark:text-stone-200">{job.job_type ? OPPORTUNITY_TYPE_LABELS[job.job_type] : "Not specified"}</dd></div>
           {job.deadline && <div className="flex gap-1"><dt>Deadline</dt><dd className="font-medium text-stone-800 dark:text-stone-200">{formatDate(job.deadline)}</dd></div>}
           {job.applied_at && <div className="flex gap-1"><dt>Applied</dt><dd className="font-medium text-stone-800 dark:text-stone-200">{formatDate(job.applied_at)}</dd></div>}
           <div className="flex gap-1"><dt>Added</dt><dd className="font-medium text-stone-800 dark:text-stone-200">{formatDate(job.created_at)}</dd></div>
@@ -98,10 +98,10 @@ export default async function JobPage({
         {documentsError ? <p role="alert" className="mt-3 text-red-700 dark:text-red-300">Documents couldn’t load. Refresh to try again.</p> : documents.length === 0 ? (
           <Card className="mt-3 border-dashed border-indigo-200 dark:border-indigo-800 bg-indigo-50/40 dark:bg-indigo-950/30 p-4 text-sm leading-relaxed text-stone-600 dark:text-stone-300 shadow-none">
             <p className="font-medium text-stone-800 dark:text-stone-200">
-              No tailored documents yet.
+              No application documents yet.
             </p>
-            <p className="mt-2">Ask your connected assistant to tailor a resume using your profile and this job description. The saved document will appear here.</p>
-            <div className="mt-3"><CopyButton text={`Tailor a resume for ${job.title} at ${job.company} in Career Copilot (job ID: ${job.id}). Use my master profile and the saved job description. Save the result to this job.`} /></div>
+            <p className="mt-2">Ask your connected assistant to prepare the right materials using your profile and this opportunity description. Saved documents will appear here.</p>
+            <div className="mt-3"><CopyButton text={`Prepare application materials for ${job.title} at ${job.company} in Career Copilot (opportunity ID: ${job.id}). Use my master profile and the saved opportunity description. Save the results to this opportunity.`} /></div>
           </Card>
         ) : (
           <Card className="mt-3 divide-y divide-stone-100 dark:divide-stone-700/60">
@@ -132,12 +132,12 @@ export default async function JobPage({
         )}
       </section>
 
-      {/* Job description */}
+      {/* Opportunity description */}
       {job.jd_text ? <Card>
         <details>
           <summary className={summaryCls}>
             <span>
-              Job description{" "}
+              Opportunity description{" "}
               {job.jd_text ? (
                 <span className="font-normal text-stone-500 dark:text-stone-400 tabular-nums">
                   · {job.jd_text.length.toLocaleString()} chars
@@ -158,7 +158,7 @@ export default async function JobPage({
             </div>
           ) : null}
         </details>
-      </Card> : <a href="#job-editor" className="block rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-medium text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">Add the missing job description in the editor below →</a>}
+      </Card> : <a href="#job-editor" className="block rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-medium text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">Add the missing opportunity description in the editor below →</a>}
 
       {/* Edit details */}
       <Card>
@@ -172,10 +172,14 @@ export default async function JobPage({
             className="space-y-4 border-t border-stone-100 dark:border-stone-700/60 p-4"
           >
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Job type">
+              <Field label="Opportunity type">
                 <Select name="job_type" defaultValue={job.job_type ?? ""}>
                   <option value="">Not specified</option>
-                  {JOB_TYPES.map((type) => <option key={type} value={type}>{JOB_TYPE_LABELS[type]}</option>)}
+                  {OPPORTUNITY_TYPE_GROUPS.map((group) => (
+                    <optgroup key={group.label} label={group.label}>
+                      {group.types.map((type) => <option key={type} value={type}>{OPPORTUNITY_TYPE_LABELS[type]}</option>)}
+                    </optgroup>
+                  ))}
                 </Select>
               </Field>
               <Field label="Posting URL">
@@ -191,7 +195,7 @@ export default async function JobPage({
             <Field label="Deadline" className="sm:w-56">
               <Input name="deadline" type="date" defaultValue={job.deadline ?? ""} />
             </Field>
-            <Field label="Job description">
+            <Field label="Opportunity description">
               <Textarea
                 name="jd_text"
                 rows={10}
@@ -220,7 +224,7 @@ export default async function JobPage({
 
       <ActionForm action={deleteJob.bind(null, job.id)} className="pt-2">
         <input type="hidden" name="returnTo" value={returnTo} />
-        <DeleteButton label="Delete this job and all its documents" message="Delete this job and all its documents? This cannot be undone." />
+        <DeleteButton label="Delete this opportunity and all its documents" message="Delete this opportunity and all its documents? This cannot be undone." />
       </ActionForm>
     </div>
   );

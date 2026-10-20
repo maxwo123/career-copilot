@@ -3,9 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { Job, JobStatus, JobType } from "@/lib/types";
-import { JOB_TYPES, JOB_TYPE_LABELS } from "@/lib/types";
+import { OPPORTUNITY_TYPE_GROUPS, OPPORTUNITY_TYPE_LABELS } from "@/lib/types";
 import { matchesJobSearch, matchesJobType } from "@/lib/job-search";
-import { Card, Field, Input, SectionTitle, StatusSelect, StatusPill, buttonCls, formatDate } from "@/lib/ui";
+import { Badge, Card, Field, Input, SectionTitle, StatusSelect, StatusPill, buttonCls, formatDate } from "@/lib/ui";
 
 type JobTypeFilter = JobType | "unspecified" | "";
 
@@ -39,14 +39,14 @@ export function JobList({ jobs, initialQuery, initialStatus, initialJobType }: {
 
   return (
     <>
-      <section aria-label="Tracked jobs">
+      <section aria-label="Tracked opportunities">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <SectionTitle count={matchingJobs.length}>Tracked jobs</SectionTitle>
-          <span className="sr-only" role="status" aria-live="polite">{matchingJobs.length} {matchingJobs.length === 1 ? "job" : "jobs"} found</span>
-          <Link href="/jobs/new" className={buttonCls("primary")}>+ Add job</Link>
+          <SectionTitle count={matchingJobs.length}>Tracked opportunities</SectionTitle>
+          <span className="sr-only" role="status" aria-live="polite">{matchingJobs.length} {matchingJobs.length === 1 ? "opportunity" : "opportunities"} found</span>
+          <Link href="/jobs/new" className={buttonCls("primary")}>+ Add opportunity</Link>
         </div>
         <div className="mb-4 flex flex-wrap items-end gap-3" role="search">
-          <Field label="Find a job" className="min-w-0 grow basis-60">
+          <Field label="Find an opportunity" className="min-w-0 grow basis-60">
             <Input
               name="q"
               type="search"
@@ -64,15 +64,19 @@ export function JobList({ jobs, initialQuery, initialStatus, initialJobType }: {
             onChange={(event) => updateFilters(query, event.target.value as JobStatus | "", jobType)}
           />
           <label className="flex flex-col gap-1.5 text-xs font-medium text-stone-700 dark:text-stone-300">
-            Job type
+            Opportunity type
             <select
               name="type"
               value={jobType}
               onChange={(event) => updateFilters(query, status, event.target.value as JobTypeFilter)}
-              className="h-8 w-36 rounded-lg border border-stone-300 bg-white px-2 text-xs text-stone-700 focus:outline-2 focus:outline-offset-1 focus:outline-indigo-600 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-200"
+              className="h-8 w-52 max-w-full rounded-lg border border-stone-300 bg-white px-2 text-xs text-stone-700 focus:outline-2 focus:outline-offset-1 focus:outline-indigo-600 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-200"
             >
               <option value="">All types</option>
-              {JOB_TYPES.map((type) => <option key={type} value={type}>{JOB_TYPE_LABELS[type]}</option>)}
+              {OPPORTUNITY_TYPE_GROUPS.map((group) => (
+                <optgroup key={group.label} label={group.label}>
+                  {group.types.map((type) => <option key={type} value={type}>{OPPORTUNITY_TYPE_LABELS[type]}</option>)}
+                </optgroup>
+              ))}
               <option value="unspecified">Not specified</option>
             </select>
           </label>
@@ -81,15 +85,15 @@ export function JobList({ jobs, initialQuery, initialStatus, initialJobType }: {
 
         {jobs.length === 0 ? (
           <Card className="border-dashed p-12 text-center shadow-none">
-            <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-100">No jobs yet</h2>
-            <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-stone-500 dark:text-stone-400">Add a job posting to start tracking applications and deadlines.</p>
-            <Link href="/jobs/new" className={buttonCls("primary", "md", "mt-6")}>Add your first job</Link>
+            <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-100">No opportunities yet</h2>
+            <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-stone-500 dark:text-stone-400">Add a job, research role, or graduate program to start tracking applications and deadlines.</p>
+            <Link href="/jobs/new" className={buttonCls("primary", "md", "mt-6")}>Add your first opportunity</Link>
           </Card>
         ) : matchingJobs.length === 0 ? (
           <Card className="p-8 text-center">
-            <h2 className="font-semibold">No matching jobs</h2>
-            <p className="mt-2 text-sm text-stone-600 dark:text-stone-400">Try another search or filter, or show all jobs.</p>
-            <button type="button" onClick={() => updateFilters("", "", "")} className={buttonCls("secondary", "md", "mt-4")}>Show all jobs</button>
+            <h2 className="font-semibold">No matching opportunities</h2>
+            <p className="mt-2 text-sm text-stone-600 dark:text-stone-400">Try another search or filter, or show all opportunities.</p>
+            <button type="button" onClick={() => updateFilters("", "", "")} className={buttonCls("secondary", "md", "mt-4")}>Show all opportunities</button>
           </Card>
         ) : (
           <Card className="divide-y divide-stone-200 overflow-hidden dark:divide-stone-700">
@@ -107,8 +111,8 @@ export function JobList({ jobs, initialQuery, initialStatus, initialJobType }: {
                   {job.deadline && <span>Due {formatDate(job.deadline)}</span>}
                   {job.applied_at && <span>Applied {formatDate(job.applied_at)}</span>}
                   {!job.deadline && !job.applied_at && <span>Added {formatDate(job.created_at)}</span>}
-                  {!job.jd_text && <span className="font-medium text-amber-600 dark:text-amber-500">No JD pasted</span>}
-                  {job.job_type && <span>{JOB_TYPE_LABELS[job.job_type]}</span>}
+                  {!job.jd_text && <span className="font-medium text-amber-600 dark:text-amber-500">No description</span>}
+                  {job.job_type && <Badge>{OPPORTUNITY_TYPE_LABELS[job.job_type]}</Badge>}
                   <StatusPill status={job.status} />
                 </div>
               </Link>

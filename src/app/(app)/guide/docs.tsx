@@ -125,8 +125,8 @@ export const DOCS: GuideDoc[] = [
           </li>
           <li>
             <B>Applications</B> — the <A href="/applications">pipeline</A>:
-            tracked jobs, deadlines, and a timeline of when each company&apos;s
-            application window opens so you apply in week one.
+            tracked career and education opportunities, deadlines, and a
+            timeline of when each organization&apos;s application window opens.
           </li>
           <li>
             <B>Documents</B> — tailored resumes, cover letters, interview
@@ -177,11 +177,10 @@ export const DOCS: GuideDoc[] = [
             everything — tailoring means cutting, not inventing.
           </li>
           <li>
-            <B>Add a job and tailor.</B> Add a posting (paste the full job
-            description — most boards sit behind logins, so the text must
-            travel with the link), then ask:{" "}
-            <Code>Tailor a resume for the &lt;company&gt; job in Career
-            Copilot</Code>. Review and print it from the document page.
+            <B>Add an opportunity and prepare.</B> Add a job, research role,
+            or program (paste the full description so it travels with the
+            link), then ask your AI to prepare the right materials. Review and
+            print saved documents from the document page.
           </li>
           <li>
             <B>Optional but powerful:</B> ask your AI to research when your
@@ -375,34 +374,48 @@ gemini mcp add --transport http career-copilot ${origin}/api/mcp \\
     group: "Using the app",
     title: "Applications",
     description:
-      "Pipeline, deadlines, tracked jobs, and the application-window timeline.",
+      "Pipeline, deadlines, tracked opportunities, and the application-window timeline.",
     Body: () => (
       <>
         <P>
           <A href="/applications">Applications</A> gathers everything
-          job-related: pipeline stats across the six statuses (saved →
+          application-related: pipeline stats across the six statuses (saved →
           applied → interviewing → offer / rejected / withdrawn), upcoming
-          deadlines, your tracked jobs, and the application timeline.
+          deadlines, your tracked opportunities, and the application timeline.
         </P>
-        <H2>Tracking a job</H2>
+        <H2>Tracking an opportunity</H2>
         <P>
-          Add a job with <B>+ Add job</B> (header button). Paste the{" "}
-          <B>full job description text</B>, not just the link — Handshake and
-          most boards sit behind logins, so your AI can only work with text
-          that travels with the posting. Each job page holds the JD, notes,
-          status, deadline, and every document generated for it.
+          Add a job, research role, fellowship, or graduate program with{" "}
+          <B>+ Add opportunity</B>. Paste the <B>full opportunity description</B>,
+          not just the link — many boards and school portals sit behind logins,
+          so your AI can only work with text that travels with the opportunity.
+          Each page holds the description, notes, status, deadline, and every
+          document generated for it.
+        </P>
+        <P>
+          Choose one primary <B>opportunity type</B>. Types are grouped as
+          employment (full-time, part-time, contract, apprenticeship),
+          experience and research (internship, co-op, undergraduate research,
+          graduate assistantship, fellowship, volunteer), and further education
+          (post-baccalaureate, master&apos;s, doctoral / PhD, professional degree,
+          certificate / bootcamp). Every opportunity created by your connected
+          AI requires a type. It infers the most specific type from the title
+          and description, asks you when there is not enough information, and
+          uses Other only when none of the named categories fits.
         </P>
         <H2>The application timeline</H2>
         <P>
           The timeline shows <B>when each company&apos;s application window
           opens</B>, grouped by month with an &quot;Open now&quot; badge —
           because applying in week one matters; roles fill as they post. Ask
-          your AI to research target companies and import their hiring
-          cycles; one click (<B>Track as job</B>) promotes a window into a
-          tracked job when you&apos;re ready to apply.
+          your AI to research target organizations and import their application
+          cycles; one click (<B>Track opportunity</B>) promotes a window into a
+          tracked opportunity when you&apos;re ready to apply.
         </P>
         <ul className="mb-3 list-none pl-0">
           <Prompt>Research when big pharma ML internships open and build my application timeline.</Prompt>
+          <Prompt>Tag every opportunity in my tracker with the right type.</Prompt>
+          <Prompt>Add this PhD program to Career Copilot and tag it as a doctoral program.</Prompt>
           <Prompt>Mark the &lt;company&gt; job as applied.</Prompt>
           <Prompt>What&apos;s open right now that I haven&apos;t applied to?</Prompt>
         </ul>
@@ -555,7 +568,7 @@ Authorization: Bearer <MCP_TOKEN>`}</CodeBlock>
             <Code>delete_profile_entry</Code>
           </li>
           <li>
-            <B>Jobs</B>: <Code>list_jobs</Code>, <Code>get_job</Code>,{" "}
+            <B>Opportunities</B>: <Code>list_jobs</Code>, <Code>get_job</Code>,{" "}
             <Code>add_job</Code>, <Code>update_job</Code>
           </li>
           <li>

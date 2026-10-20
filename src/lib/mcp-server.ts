@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { DocumentRow, Job, Profile, ProfileEntry } from "@/lib/types";
-import { JOB_TYPES, isJobType } from "@/lib/types";
+import { OPPORTUNITY_TYPES, isOpportunityType } from "@/lib/types";
 import { APPLICATION_PROFILE_FIELDS, parseApplicationProfilePatch } from "@/lib/application-profile";
 import { getAgentVaultLogin, listAgentVaultLogins, saveAgentVaultLogin } from "@/lib/vault-agent-access";
 
@@ -22,6 +22,9 @@ const PROTOCOL_VERSION = "2025-03-26";
 const JOB_STATUSES = ["saved", "applied", "interviewing", "offer", "rejected", "withdrawn"];
 const SECTIONS = ["education", "experience", "projects", "leadership", "skills", "certifications", "other"];
 const DOC_TYPES = ["resume", "cover_letter", "interview_prep", "match_analysis", "briefing", "other"];
+const OPPORTUNITY_TYPE_DESCRIPTION =
+  "REQUIRED primary opportunity type. Always choose the most specific supported value before saving. Use undergraduate_research for research roles aimed at bachelor’s students, graduate_assistantship for graduate RA/TA roles, doctoral_program for PhD or other research-doctorate admissions, and professional_school for MD, JD, DDS, PharmD, or similar degrees. Use other only when none of the named categories fits.";
+const OPPORTUNITY_TYPE_ERROR = `opportunity_type must be one of: ${OPPORTUNITY_TYPES.join(", ")}.`;
 
 const SERVER_INSTRUCTIONS = `You are the intelligence layer for this career-growth app; the app itself has no AI. The app keeps a hidden "career narrative" — behind-the-scenes coach memory about the candidate (where they started, where they are now, where they're headed, interests, constraints, gaps, coach notes). It is NOT visible anywhere in the app's UI: connected AI tools like you are its only readers and writers, and it is how coaching context survives across sessions and across different AI tools.
 
@@ -32,7 +35,8 @@ Session protocol:
 4. TRANSPARENCY: if the candidate asks what you know about them, share the narrative content openly — it is their data, just stored out of the UI's way.
 5. THE DASHBOARD IS A MONTH-GROUPED TIMELINE OF ACTION ITEMS (list_notes / upsert_note / delete_note): each item has a bold title, a target month (rendered as timeline headers — schedule work across months, don't dump everything into one), and a free-text body where lines written as "[ ] task" render as checkable to-dos and "[x] task" as done. Compose each body like a document: short explanation, why it matters, links to resources, then the to-do lines. Keep it curated: a handful of items per month, mark lines "[x]" as the candidate reports progress, delete stale items. Long bodies are fine — cards are collapsed by default and expand to full height.
 6. Keep briefings current (save_document doc_type "briefing", vocabulary matched to the level recorded in current_state), and resumes truthful (tailoring selects and rephrases real profile entries, never invents). Application-profile fields are for application forms; keep preferred_application_email separate from the resume contact email in profile.header.email. Never store passwords or criminal-background answers in the profile.
-7. EMPLOYER LOGINS: when the candidate asks you to use an employer account, call list_vault_logins then get_vault_login for the right site. Access is available only while the candidate has enabled it in Login vault. Use a retrieved password only on the matching employer site; never repeat it in chat or save it in a profile, document, or note. If you create a new employer account at the candidate's request, save its login with save_vault_login. If you have browser tools, you may sign in or create an account as requested. Ask the candidate to complete email verification, CAPTCHA, or two-factor authentication when needed.`;
+7. EMPLOYER LOGINS: when the candidate asks you to use an employer account, call list_vault_logins then get_vault_login for the right site. Access is available only while the candidate has enabled it in Login vault. Use a retrieved password only on the matching employer site; never repeat it in chat or save it in a profile, document, or note. If you create a new employer account at the candidate's request, save its login with save_vault_login. If you have browser tools, you may sign in or create an account as requested. Ask the candidate to complete email verification, CAPTCHA, or two-factor authentication when needed.
+8. OPPORTUNITY TYPES ARE REQUIRED ON CREATION: the tracker covers employment, experiential learning, research, fellowships, and further education. Every add_job call MUST include opportunity_type. Infer the most specific supported value from the title and description. If there is not enough information, ask the candidate before saving; use other only when none of the named categories fits. Never create an untagged opportunity and plan to backfill it later.`;
 
 const INTERVIEW_GUIDE = {
   style:
@@ -210,19 +214,19 @@ const TOOLS: ToolDef[] = [
   {
     name: "list_jobs",
     description:
-      "All jobs in the tracker with status, job type, deadline, and whether a job description is on file. Statuses: saved → applied → interviewing → offer / rejected / withdrawn.",
+      "All tracked career and education opportunities with status, opportunity type, deadline, and whether a description is on file. Statuses: saved → applied → interviewing → offer / rejected / withdrawn.",
     inputSchema: {
       type: "object",
       properties: {
         status: { type: "string", enum: JOB_STATUSES, description: "Optional filter" },
-        job_type: { type: "string", enum: [...JOB_TYPES, "unspecified"], description: "Optional job type filter" },
+        opportunity_type: { type: "string", enum: [...OPPORTUNITY_TYPES, "unspecified"], description: "Optional opportunity type filter" },
       },
     },
   },
   {
     name: "get_job",
     description:
-      "Full detail for one job: the pasted job description text, notes, dates, and the list of documents already generated for it.",
+      "Full detail for one tracked opportunity: its type, pasted description, notes, dates, and generated documents.",
     inputSchema: {
       type: "object",
       properties: { job_id: { type: "string" } },
@@ -231,33 +235,33 @@ const TOOLS: ToolDef[] = [
   },
   {
     name: "add_job",
-    description: "Add a job posting to the tracker (status starts at 'saved').",
+    description: "Add a job, research role, fellowship, graduate program, or other career-growth opportunity to the tracker (status starts at 'saved'). opportunity_type is mandatory: classify every opportunity before calling this tool.",
     inputSchema: {
       type: "object",
       properties: {
-        company: { type: "string" },
-        title: { type: "string" },
-        url: { type: "string" },
-        source: { type: "string", description: "Handshake, LinkedIn, company site..." },
+        company: { type: "string", description: "Employer, university, lab, program, or other organization" },
+        title: { type: "string", description: "Role, program, fellowship, or opportunity name" },
+        url: { type: "string", description: "Opportunity or program URL" },
+        source: { type: "string", description: "Handshake, LinkedIn, university site, company site..." },
         location: { type: "string" },
-        job_type: { type: "string", enum: JOB_TYPES, description: "Full Time, Part Time, or Internship" },
-        jd_text: { type: "string", description: "Full job description text" },
+        opportunity_type: { type: "string", enum: OPPORTUNITY_TYPES, description: OPPORTUNITY_TYPE_DESCRIPTION },
+        jd_text: { type: "string", description: "Full opportunity description or program overview" },
         deadline: { type: "string", description: "YYYY-MM-DD" },
         notes: { type: "string" },
       },
-      required: ["company", "title"],
+      required: ["company", "title", "opportunity_type"],
     },
   },
   {
     name: "update_job",
     description:
-      "Update a job: move its status, set/replace the job description text, notes, or deadline. Setting status to 'applied' stamps the applied date.",
+      "Update a tracked opportunity: tag its type, move its status, or set/replace its description, notes, or deadline. Setting status to 'applied' stamps the applied date.",
     inputSchema: {
       type: "object",
       properties: {
         job_id: { type: "string" },
         status: { type: "string", enum: JOB_STATUSES },
-        job_type: { type: "string", enum: [...JOB_TYPES, ""], description: "Job type, or empty to clear it" },
+        opportunity_type: { type: "string", enum: [...OPPORTUNITY_TYPES, ""], description: `${OPPORTUNITY_TYPE_DESCRIPTION} Use an empty string to clear it.` },
         jd_text: { type: "string" },
         notes: { type: "string" },
         deadline: { type: "string", description: "YYYY-MM-DD" },
@@ -663,19 +667,22 @@ async function callTool(name: string, args: any): Promise<unknown> {
     case "list_jobs": {
       let q = supabase.from("jobs").select("*").order("created_at", { ascending: false });
       if (args?.status) q = q.eq("status", args.status);
-      if (args?.job_type === "unspecified") q = q.is("job_type", null);
-      else if (args?.job_type) q = q.eq("job_type", args.job_type);
+      const opportunityType = args?.opportunity_type ?? args?.job_type;
+      if (opportunityType === "unspecified") q = q.is("job_type", null);
+      else if (opportunityType) q = q.eq("job_type", opportunityType);
       const { data } = await q;
       return ((data ?? []) as Job[]).map((j) => ({
         job_id: j.id,
         company: j.company,
         title: j.title,
         status: j.status,
+        opportunity_type: j.job_type,
         job_type: j.job_type,
         location: j.location,
         source: j.source,
         deadline: j.deadline,
         applied_at: j.applied_at,
+        has_description: j.jd_text.length > 0,
         has_job_description: j.jd_text.length > 0,
         url: j.url,
       }));
@@ -700,11 +707,13 @@ async function callTool(name: string, args: any): Promise<unknown> {
         source: j.source,
         location: j.location,
         status: j.status,
+        opportunity_type: j.job_type,
         job_type: j.job_type,
         deadline: j.deadline,
         applied_at: j.applied_at,
         notes: j.notes,
-        job_description: j.jd_text || "(none pasted yet — ask the candidate for the JD text, or fetch it if the posting URL is public)",
+        opportunity_description: j.jd_text || "(none pasted yet — ask the candidate for the description, or fetch it if the URL is public)",
+        job_description: j.jd_text || "(none pasted yet — ask the candidate for the description, or fetch it if the URL is public)",
         documents: (docRows ?? []).map((d: any) => ({
           document_id: d.id,
           doc_type: d.doc_type,
@@ -719,8 +728,9 @@ async function callTool(name: string, args: any): Promise<unknown> {
       const company = str(args?.company);
       const title = str(args?.title);
       if (!company || !title) throw new Error("company and title are required.");
-      const jobType = str(args?.job_type);
-      if (jobType && !isJobType(jobType)) throw new Error("job_type must be full_time, part_time, or internship.");
+      const jobType = str(args?.opportunity_type ?? args?.job_type);
+      if (!jobType) throw new Error(`opportunity_type is required. ${OPPORTUNITY_TYPE_ERROR}`);
+      if (!isOpportunityType(jobType)) throw new Error(OPPORTUNITY_TYPE_ERROR);
       const { data, error } = await supabase
         .from("jobs")
         .insert({
@@ -738,7 +748,7 @@ async function callTool(name: string, args: any): Promise<unknown> {
         .single();
       if (error) throw new Error(error.message);
       await log(supabase, "add_job", `Added ${title} @ ${company}`, data.id);
-      return { job_id: data.id, status: "saved", job_type: jobType || null };
+      return { job_id: data.id, status: "saved", opportunity_type: jobType || null, job_type: jobType || null };
     }
 
     case "update_job": {
@@ -751,9 +761,9 @@ async function callTool(name: string, args: any): Promise<unknown> {
         patch.status = args.status;
         if (args.status === "applied") patch.applied_at = new Date().toISOString();
       }
-      if (args?.job_type !== undefined) {
-        const jobType = str(args.job_type);
-        if (jobType && !isJobType(jobType)) throw new Error("job_type must be full_time, part_time, or internship.");
+      if (args?.opportunity_type !== undefined || args?.job_type !== undefined) {
+        const jobType = str(args?.opportunity_type ?? args?.job_type);
+        if (jobType && !isOpportunityType(jobType)) throw new Error(OPPORTUNITY_TYPE_ERROR);
         patch.job_type = jobType || null;
       }
       if (typeof args?.jd_text === "string") patch.jd_text = args.jd_text.trim();
