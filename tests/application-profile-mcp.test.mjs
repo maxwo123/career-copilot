@@ -4,14 +4,14 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
 
-function load(file, mocks = {}) {
+function load(file, mocks = {}, env = { MCP_TOKEN: 'test-token' }) {
   const exports = {};
   const source = ts.transpileModule(fs.readFileSync(file, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
   vm.runInNewContext(source, {
     exports,
-    process: { env: { MCP_TOKEN: 'test-token' } },
+    process: { env },
     require: (name) => {
       if (!(name in mocks)) throw new Error(`Unexpected import ${name}`);
       return mocks[name];
@@ -45,7 +45,7 @@ const client = { from(table) {
   return chain;
 }};
 const profileParser = load('src/lib/application-profile.ts');
-const { mcpPost } = load('src/lib/mcp-server.ts', {
+const { mcpPost, dispatchMcp } = load('src/lib/mcp-server.ts', {
   'next/server': { NextResponse: { json: (body, options) => ({ body, status: options?.status ?? 200 }) } },
   '@/lib/supabase/service': { createServiceClient: () => client },
   '@/lib/types': load('src/lib/types.ts'),
@@ -61,6 +61,50 @@ const request = (method, params = {}) => ({
   json: async () => ({ jsonrpc: '2.0', id: 1, method, params }),
 });
 
+test('personal context MCP requires its own token and limits reads to shared owner sections', async () => {
+  const owner = '12345678-1234-1234-1234-123456789abc';
+  const personalToken = 'p'.repeat(64);
+  const careerToken = 'c'.repeat(64);
+  const env = {
+    PERSONAL_CONTEXT_OWNER_ID: owner,
+    PERSONAL_CONTEXT_MCP_TOKENS: [personalToken, careerToken].join(','),
+    MCP_TOKEN: careerToken,
+  };
+  const filters = [];
+  const query = {
+    select(columns) { assert.equal(columns, 'section, markdown, updated_at'); return query; },
+    eq(field, value) { filters.push([field, value]); return query; },
+    neq(field, value) { assert.equal(field, 'markdown'); assert.equal(value, ''); return query; },
+    order() { return query; },
+    then(resolve) { return Promise.resolve({ data: [] }).then(resolve); },
+  };
+  const { POST } = load('src/app/api/mcp/personal/route.ts', {
+    'node:crypto': await import('node:crypto'),
+    'next/server': { NextResponse: { json: (body, options) => ({ body, status: options?.status ?? 200 }) } },
+    '@/lib/mcp-server': { dispatchMcp },
+    '@/lib/personal-context': load('src/lib/personal-context.ts'),
+    '@/lib/supabase/service': { createServiceClient: () => ({ from(table) {
+      assert.equal(table, 'personal_context_sections');
+      return query;
+    } }) },
+  }, env);
+  const call = (token, method, params) => POST({
+    ...request(method, params),
+    headers: { get: () => 'Bearer ' + token },
+  });
+  assert.equal((await call(careerToken, 'tools/list')).status, 401);
+  const tools = await call(personalToken, 'tools/list');
+  assert.deepEqual(Array.from(tools.body.result.tools, ({ name }) => name), ['get_personal_context']);
+  assert.equal((await call(personalToken, 'tools/call', { name: 'get_vault_login' })).body.result.isError, true);
+  const response = await call(personalToken, 'tools/call', {
+    name: 'get_personal_context', arguments: { section: 'goals' },
+  });
+  assert.equal(response.body.result.isError, false);
+  assert.deepEqual(filters, [['user_id', owner], ['shared', true], ['section', 'goals']]);
+  env.PERSONAL_CONTEXT_MCP_TOKENS = '';
+  assert.equal((await call(personalToken, 'tools/list')).status, 401);
+});
+
 test('MCP profile schema keeps resume email and application email separate', async () => {
   const response = await mcpPost(request('tools/list'));
   const update = response.body.result.tools.find((tool) => tool.name === 'update_profile');
@@ -68,6 +112,24 @@ test('MCP profile schema keeps resume email and application email separate', asy
   assert.ok(update.inputSchema.properties.preferred_application_email);
   for (const field of profileParser.APPLICATION_PROFILE_FIELDS) assert.ok(update.inputSchema.properties[field]);
   assert.equal(update.inputSchema.properties.password, undefined);
+});
+
+test('MCP instructions exclude ordinary courses and non-employment interviews', async () => {
+  const response = await mcpPost(request('initialize', { protocolVersion: '2025-03-26' }));
+  const instructions = response.body.result.instructions;
+  assert.match(instructions, /primary intent is employment/);
+  assert.match(instructions, /Do not use it for ordinary coursework/);
+  assert.match(instructions, /research, user, journalistic, or other non-employment interviews/);
+  assert.match(instructions, /If a request is ambiguous or can be answered without stored career context, do not call this server/);
+  assert.doesNotMatch(instructions, /before answering any career question/);
+});
+
+test('career narrative loading is sequencing guidance, not a broad selection trigger', async () => {
+  const response = await mcpPost(request('tools/list'));
+  const narrative = response.body.result.tools.find((tool) => tool.name === 'get_career_narrative');
+  assert.match(narrative.description, /only after Career Copilot has already been selected/);
+  assert.match(narrative.description, /ordinary course, academic, or non-employment interview request/);
+  assert.doesNotMatch(narrative.description, /ALWAYS CALL THIS FIRST/);
 });
 
 test('MCP opportunity schema exposes career and graduate-school types to the agent', async () => {

@@ -35,10 +35,11 @@ into the app where you view and print them.
    click promotes a timeline event into a tracked job.
 7. **Career coach** — three pillars beyond documents: a **career narrative**
    (hidden, MCP-only coach memory — no UI; connected AIs load it via
-   `get_career_narrative` before any career question, run a first-time
-   guided interview when it's empty, and merge refinements back after every
-   meaningful conversation, so the picture progresses over time and carries
-   across AI tools), **Notes & actions** on the dashboard — a month-grouped
+   `get_career_narrative` after Career Copilot is selected for an in-scope
+   career task, run a first-time guided interview when it's empty, and merge
+   refinements back after every meaningful conversation, so the picture
+   progresses over time and carries across AI tools), **Notes & actions** on
+   the dashboard — a month-grouped
    timeline (same rail UI as the application timeline) of action-item cards:
    bold title on its own line, then a text-editor body mixing explanations,
    hyperlinks, and "[] task" checkbox lines; cards are collapsed by default

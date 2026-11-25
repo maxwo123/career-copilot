@@ -1,3 +1,7 @@
+## Career Copilot MCP scope
+
+Use the Career Copilot connection only when the user's primary intent concerns employment, internships, career planning, job applications, resumes, professional networking, employment interviews, or applications to graduate and professional programs. Do not invoke it for ordinary coursework, course registration, academic assignments, subject tutoring, or research, user, journalistic, or other non-employment interviews. Do not invoke it merely because education, skills, courses, or interviews are mentioned. Course selection is in scope only when the user explicitly connects it to a career goal or asks to save it in Career Copilot. If a request is ambiguous or can be answered without stored career context, do not call the connection.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 # This is NOT the Next.js you know

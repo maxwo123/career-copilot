@@ -26,10 +26,14 @@ const OPPORTUNITY_TYPE_DESCRIPTION =
   "REQUIRED primary opportunity type. Always choose the most specific supported value before saving. Use undergraduate_research for research roles aimed at bachelor’s students, graduate_assistantship for graduate RA/TA roles, doctoral_program for PhD or other research-doctorate admissions, and professional_school for MD, JD, DDS, PharmD, or similar degrees. Use other only when none of the named categories fits.";
 const OPPORTUNITY_TYPE_ERROR = `opportunity_type must be one of: ${OPPORTUNITY_TYPES.join(", ")}.`;
 
-const SERVER_INSTRUCTIONS = `You are the intelligence layer for this career-growth app; the app itself has no AI. The app keeps a hidden "career narrative" — behind-the-scenes coach memory about the candidate (where they started, where they are now, where they're headed, interests, constraints, gaps, coach notes). It is NOT visible anywhere in the app's UI: connected AI tools like you are its only readers and writers, and it is how coaching context survives across sessions and across different AI tools.
+const TOOL_SELECTION_BOUNDARY = `Use Career Copilot only when the user's primary intent is employment, internships, career planning, job applications, resumes, professional networking, employment interviews, or applications to graduate and professional programs. Do not use it for ordinary coursework, course registration, academic assignments, subject tutoring, or research, user, journalistic, or other non-employment interviews. Do not invoke it merely because education, skills, courses, or interviews are mentioned. Course selection is in scope only when the user explicitly connects it to a career goal or asks to save it in Career Copilot. If a request is ambiguous or can be answered without stored career context, do not call this server.`;
+
+const SERVER_INSTRUCTIONS = `${TOOL_SELECTION_BOUNDARY}
+
+You are the intelligence layer for this career-growth app; the app itself has no AI. The app keeps a hidden "career narrative" — behind-the-scenes coach memory about the candidate (where they started, where they are now, where they're headed, interests, constraints, gaps, coach notes). It is NOT visible anywhere in the app's UI: connected AI tools like you are its only readers and writers, and it is how coaching context survives across sessions and across different AI tools.
 
 Session protocol:
-1. LOAD CONTEXT FIRST: call get_career_narrative before answering any career question. It returns the coach memory plus pending work (open action items, briefing staleness).
+1. LOAD CONTEXT AFTER SELECTION: once Career Copilot has been selected for an in-scope task, call get_career_narrative before using other Career Copilot tools or giving personalized career guidance. It returns the coach memory plus pending work (open action items, briefing staleness).
 2. FIRST TIME (it returns first_time: true): the candidate has no coach memory yet. Proactively suggest a short guided interview — the response includes the question guide. Ask ONE question at a time, conversationally; after the interview, save the picture with update_career_narrative and seed the dashboard with 2–4 sections via upsert_note, each with a few "[ ] task" lines. Tell the candidate this builds a private career memory that makes every future conversation (in any AI tool) smarter.
 3. RETURNING: the memory should progress over time. Whenever a conversation reveals something new — a skill gained, a goal sharpened, a worry, a win — merge it in via update_career_narrative. Refine the existing text (you loaded it in step 1); never wholesale overwrite. Leave coach_notes for the next session.
 4. TRANSPARENCY: if the candidate asks what you know about them, share the narrative content openly — it is their data, just stored out of the UI's way.
@@ -92,7 +96,7 @@ const TOOLS: ToolDef[] = [
   {
     name: "get_career_narrative",
     description:
-      "ALWAYS CALL THIS FIRST, before answering any career question. Loads the behind-the-scenes coach memory (not visible in the app UI): where the candidate began, where they are now, where they're headed, interests, constraints, gap analysis, and coach notes from previous AI sessions — possibly from other AI tools. Also reports pending work (open action items, briefing staleness). If it returns first_time: true, suggest the included guided interview to build the memory.",
+      "Use this first only after Career Copilot has already been selected for an in-scope career task. Do not use it to decide whether an ordinary course, academic, or non-employment interview request is career-related. Loads the behind-the-scenes coach memory (not visible in the app UI): where the candidate began, where they are now, where they're headed, interests, constraints, gap analysis, and coach notes from previous AI sessions — possibly from other AI tools. Also reports pending work (open action items, briefing staleness). If it returns first_time: true, suggest the included career-narrative interview.",
     inputSchema: { type: "object", properties: {} },
   },
   {
@@ -936,6 +940,14 @@ function rpcError(id: unknown, code: number, message: string, status = 200) {
   );
 }
 
+type McpTools = {
+  name: string;
+  version: string;
+  instructions: string;
+  tools: ReadonlyArray<{ name: string; description: string; inputSchema: object }>;
+  call: (name: string, args: unknown) => Promise<unknown>;
+};
+
 export async function mcpPost(request: NextRequest, pathToken?: string) {
   const token = process.env.MCP_TOKEN;
   const auth = request.headers.get("authorization") ?? "";
@@ -945,6 +957,16 @@ export async function mcpPost(request: NextRequest, pathToken?: string) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  return dispatchMcp(request, {
+    name: "career-copilot",
+    version: "2.0.0",
+    instructions: SERVER_INSTRUCTIONS,
+    tools: TOOLS,
+    call: callTool,
+  });
+}
+
+export async function dispatchMcp(request: NextRequest, server: McpTools) {
   let msg: any;
   try {
     msg = await request.json();
@@ -968,20 +990,20 @@ export async function mcpPost(request: NextRequest, pathToken?: string) {
         protocolVersion:
           typeof params?.protocolVersion === "string" ? params.protocolVersion : PROTOCOL_VERSION,
         capabilities: { tools: {} },
-        serverInfo: { name: "career-copilot", version: "2.0.0" },
-        instructions: SERVER_INSTRUCTIONS,
+        serverInfo: { name: server.name, version: server.version },
+        instructions: server.instructions,
       });
 
     case "ping":
       return rpcResult(id, {});
 
     case "tools/list":
-      return rpcResult(id, { tools: TOOLS });
+      return rpcResult(id, { tools: server.tools });
 
     case "tools/call": {
       const name = params?.name as string;
       try {
-        const result = await callTool(name, params?.arguments ?? {});
+        const result = await server.call(name, params?.arguments ?? {});
         return rpcResult(id, {
           content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
           isError: false,
