@@ -45,11 +45,17 @@ const client = { from(table) {
   return chain;
 }};
 const profileParser = load('src/lib/application-profile.ts');
+const contextOwner = '12345678-1234-1234-1234-123456789abc';
+const contextToolsMocks = { '@/lib/personal-context': load('src/lib/personal-context.ts') };
 const { mcpPost, dispatchMcp } = load('src/lib/mcp-server.ts', {
   'next/server': { NextResponse: { json: (body, options) => ({ body, status: options?.status ?? 200 }) } },
   '@/lib/supabase/service': { createServiceClient: () => client },
   '@/lib/types': load('src/lib/types.ts'),
   '@/lib/application-profile': profileParser,
+  '@/lib/personal-context-tools': load('src/lib/personal-context-tools.ts', {
+    ...contextToolsMocks,
+    '@/lib/supabase/service': { createServiceClient: () => client },
+  }, { PERSONAL_CONTEXT_OWNER_ID: contextOwner }),
   '@/lib/vault-agent-access': {
     listAgentVaultLogins: async () => [],
     getAgentVaultLogin: async () => { throw new Error('not used in profile tests'); },
@@ -61,8 +67,21 @@ const request = (method, params = {}) => ({
   json: async () => ({ jsonrpc: '2.0', id: 1, method, params }),
 });
 
+test('existing Career Copilot credentials expose the personal context tools', async () => {
+  for (const transport of ['header', 'path']) {
+    const req = request('tools/list');
+    const response = transport === 'header'
+      ? await mcpPost(req)
+      : await mcpPost({ ...req, headers: { get: () => null } }, 'test-token');
+    const names = Array.from(response.body.result.tools, ({ name }) => name);
+    assert.ok(names.includes('get_profile'));
+    assert.ok(names.includes('get_personal_context'));
+    assert.ok(names.includes('import_personal_context'));
+  }
+});
+
 test('personal context MCP requires its own token and limits reads to shared owner sections', async () => {
-  const owner = '12345678-1234-1234-1234-123456789abc';
+  const owner = contextOwner;
   const personalToken = 'p'.repeat(64);
   const careerToken = 'c'.repeat(64);
   const importToken = 'i'.repeat(64);
@@ -85,8 +104,9 @@ test('personal context MCP requires its own token and limits reads to shared own
     'node:crypto': await import('node:crypto'),
     'next/server': { NextResponse: { json: (body, options) => ({ body, status: options?.status ?? 200 }) } },
     '@/lib/mcp-server': { dispatchMcp },
-    '@/lib/personal-context': load('src/lib/personal-context.ts'),
-    '@/lib/supabase/service': { createServiceClient: () => ({ from(table) {
+    '@/lib/personal-context-tools': load('src/lib/personal-context-tools.ts', {
+      ...contextToolsMocks,
+      '@/lib/supabase/service': { createServiceClient: () => ({ from(table) {
       assert.equal(table, 'personal_context_sections');
       return {
         select: query.select,
@@ -95,7 +115,8 @@ test('personal context MCP requires its own token and limits reads to shared own
           return { select: async () => ({ data: [{ section: 'about' }] }) };
         },
       };
-    } }) },
+      } }) },
+    }, env),
   }, env);
   const call = (token, method, params) => POST({
     ...request(method, params),

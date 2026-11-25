@@ -4,6 +4,7 @@ import type { DocumentRow, Job, Profile, ProfileEntry } from "@/lib/types";
 import { OPPORTUNITY_TYPES, isOpportunityType } from "@/lib/types";
 import { APPLICATION_PROFILE_FIELDS, parseApplicationProfilePatch } from "@/lib/application-profile";
 import { getAgentVaultLogin, listAgentVaultLogins, saveAgentVaultLogin } from "@/lib/vault-agent-access";
+import { contextImportTool, contextReadTool, importContext, personalContextOwner, readContext } from "@/lib/personal-context-tools";
 
 // Minimal stateless MCP server (streamable HTTP transport, JSON responses).
 // The app has no AI of its own — connected AI clients (Claude, ChatGPT,
@@ -957,12 +958,19 @@ export async function mcpPost(request: NextRequest, pathToken?: string) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const owner = personalContextOwner();
   return dispatchMcp(request, {
     name: "career-copilot",
     version: "2.0.0",
-    instructions: SERVER_INSTRUCTIONS,
-    tools: TOOLS,
-    call: callTool,
+    instructions: owner
+      ? `For personal context, use get_personal_context when relevant and import_personal_context when the user requests an export from Muse or another source. Imports are private and preserve existing sections. The following scope rules apply to career tools.\n\n${SERVER_INSTRUCTIONS}`
+      : SERVER_INSTRUCTIONS,
+    tools: owner ? [...TOOLS, contextReadTool, contextImportTool] : TOOLS,
+    call: (name, args) => {
+      if (owner && name === contextReadTool.name) return readContext(owner, args);
+      if (owner && name === contextImportTool.name) return importContext(owner, args);
+      return callTool(name, args);
+    },
   });
 }
 

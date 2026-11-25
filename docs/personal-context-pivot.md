@@ -50,7 +50,7 @@ Connect clients that support authenticated Streamable HTTP to `https://<your-app
 
 ## Import directly from Muse
 
-Apply the `personal_context_import` migration and configure `PERSONAL_CONTEXT_MCP_IMPORT_TOKEN` with a separate random secret. Connect Muse to the same Streamable HTTP URL using the import token in its bearer header. This credential exposes only `import_personal_context`.
+Your existing Career Copilot connection can discover both personal context tools once the `personal_context_import` migration and `PERSONAL_CONTEXT_OWNER_ID` are configured. Keep the existing endpoint and credential, and refresh the tool list if Muse caches it. To grant import access alone, use the dedicated `/api/mcp/personal` endpoint with `PERSONAL_CONTEXT_MCP_IMPORT_TOKEN` in the bearer header.
 
 Once the connector lists the import tool, ask Muse:
 
