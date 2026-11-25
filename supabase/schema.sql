@@ -155,7 +155,7 @@ alter table public.personal_context_sections enable row level security;
 
 revoke all on public.personal_context_sections from anon, authenticated;
 grant select, insert, update on public.personal_context_sections to authenticated;
-grant select on public.personal_context_sections to service_role;
+grant select, insert on public.personal_context_sections to service_role;
 
 drop policy if exists personal_context_owner on public.personal_context_sections;
 create policy personal_context_owner on public.personal_context_sections

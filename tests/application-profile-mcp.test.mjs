@@ -65,12 +65,15 @@ test('personal context MCP requires its own token and limits reads to shared own
   const owner = '12345678-1234-1234-1234-123456789abc';
   const personalToken = 'p'.repeat(64);
   const careerToken = 'c'.repeat(64);
+  const importToken = 'i'.repeat(64);
   const env = {
     PERSONAL_CONTEXT_OWNER_ID: owner,
     PERSONAL_CONTEXT_MCP_TOKENS: [personalToken, careerToken].join(','),
+    PERSONAL_CONTEXT_MCP_IMPORT_TOKEN: importToken,
     MCP_TOKEN: careerToken,
   };
   const filters = [];
+  const writes = [];
   const query = {
     select(columns) { assert.equal(columns, 'section, markdown, updated_at'); return query; },
     eq(field, value) { filters.push([field, value]); return query; },
@@ -85,7 +88,13 @@ test('personal context MCP requires its own token and limits reads to shared own
     '@/lib/personal-context': load('src/lib/personal-context.ts'),
     '@/lib/supabase/service': { createServiceClient: () => ({ from(table) {
       assert.equal(table, 'personal_context_sections');
-      return query;
+      return {
+        select: query.select,
+        upsert(rows, options) {
+          writes.push({ rows: JSON.parse(JSON.stringify(rows)), options: JSON.parse(JSON.stringify(options)) });
+          return { select: async () => ({ data: [{ section: 'about' }] }) };
+        },
+      };
     } }) },
   }, env);
   const call = (token, method, params) => POST({
@@ -101,6 +110,23 @@ test('personal context MCP requires its own token and limits reads to shared own
   });
   assert.equal(response.body.result.isError, false);
   assert.deepEqual(filters, [['user_id', owner], ['shared', true], ['section', 'goals']]);
+  const importArgs = { name: 'import_personal_context', arguments: { sections: { about: 'About me', goals: 'My goals' } } };
+  assert.equal((await call(personalToken, 'tools/call', importArgs)).body.result.isError, true);
+  const importTools = await call(importToken, 'tools/list');
+  assert.deepEqual(Array.from(importTools.body.result.tools, ({ name }) => name), ['import_personal_context']);
+  assert.equal((await call(importToken, 'tools/call', { name: 'get_personal_context' })).body.result.isError, true);
+  const invalid = { ...importArgs, arguments: { sections: { about: 'Valid', unknown: 'Invalid' } } };
+  assert.equal((await call(importToken, 'tools/call', invalid)).body.result.isError, true);
+  assert.equal(writes.length, 0);
+  const imported = await call(importToken, 'tools/call', importArgs);
+  assert.deepEqual(JSON.parse(imported.body.result.content[0].text), { imported: ['about'], skipped_existing: ['goals'] });
+  assert.deepEqual(writes, [{
+    rows: [
+      { user_id: owner, section: 'about', markdown: 'About me', shared: false },
+      { user_id: owner, section: 'goals', markdown: 'My goals', shared: false },
+    ],
+    options: { onConflict: 'user_id,section', ignoreDuplicates: true },
+  }]);
   env.PERSONAL_CONTEXT_MCP_TOKENS = '';
   assert.equal((await call(personalToken, 'tools/list')).status, 401);
 });

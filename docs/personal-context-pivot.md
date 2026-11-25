@@ -47,3 +47,13 @@ Save each section as private while you review it. Select **Share with connected 
 For an existing database, apply the `personal_context` migration. Set `PERSONAL_CONTEXT_OWNER_ID` to your user UUID from Supabase Authentication. Set `PERSONAL_CONTEXT_MCP_TOKENS` to a comma-separated list of dedicated random secrets. Generate a distinct secret per client with `openssl rand -hex 32`. Removing a token from the environment and restarting or redeploying revokes that client’s access.
 
 Connect clients that support authenticated Streamable HTTP to `https://<your-app>/api/mcp/personal` with the header `Authorization: Bearer <client-token>`. Ask a fresh agent session to call `get_personal_context` with `{"section":"goals"}` and check the result against what you shared. Each token can read the same shared sections.
+
+## Import directly from Muse
+
+Apply the `personal_context_import` migration and configure `PERSONAL_CONTEXT_MCP_IMPORT_TOKEN` with a separate random secret. Connect Muse to the same Streamable HTTP URL using the import token in its bearer header. This credential exposes only `import_personal_context`.
+
+Once the connector lists the import tool, ask Muse:
+
+> Export the personal context you can access to my Personal Context MCP. Use the import tool and organize the material into the supported sections. Keep relevant details, omit credentials, and tell me which sections were imported or skipped.
+
+The tool saves each new section privately and reports any existing sections it skipped. Review the results in **Personal context** and choose what other agents can read.
